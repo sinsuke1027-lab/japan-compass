@@ -19,7 +19,7 @@ jobs:
       app_url: ${{ steps.url.outputs.url }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: アプリURLを取得
         id: url
