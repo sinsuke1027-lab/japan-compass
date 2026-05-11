@@ -1,0 +1,82 @@
+name: AI仕様整合性チェック
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths-ignore:
+      - 'docs/**'
+      - 'checklists/**'
+
+concurrency:
+  group: ai-spec-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  spec-check:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'WIP') }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 仕様書と差分を取得
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > /tmp/code_diff.txt
+
+          # 仕様書を結合
+          cat specs/requirements.md specs/basic-design.md 2>/dev/null \
+            | head -c 4000 > /tmp/specs.txt
+
+      - name: 仕様整合性チェックを実行
+        id: spec_check
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          DIFF=$(cat /tmp/code_diff.txt | head -c 5000)
+          SPECS=$(cat /tmp/specs.txt)
+
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d '{
+              "model": "claude-sonnet-4-6",
+              "max_tokens": 1500,
+              "system": [{
+                "type": "text",
+                "text": "あなたは仕様整合性チェックエンジニアとして、実装が仕様書の要件を満たしているかチェックします。\n\n以下を確認してください:\n1. 仕様書に定義されていない機能を追加していないか\n2. 仕様書の要件を満たしていない実装がないか\n3. データモデル・API仕様との不整合\n\n問題がなければ「仕様との整合性: ✅ 問題なし」と記載してください。\n問題がある場合は具体的に指摘し「仕様との整合性: ⚠️ 要確認」と記載してください。\n日本語で回答してください。",
+                "cache_control": {"type": "ephemeral"}
+              }],
+              "messages": [{
+                "role": "user",
+                "content": "以下の仕様書と実装の差分を比較し、仕様との乖離・矛盾がないかチェックしてください。\n\n## 仕様書\n'"$SPECS"'\n\n## 実装差分\n```\n'"$DIFF"'\n```"
+              }]
+            }')
+
+          RESULT=$(echo $RESPONSE | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          print(data['content'][0]['text'])
+          " 2>/dev/null || echo "チェックの実行に失敗しました")
+
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          echo "$RESULT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: チェック結果をPRにコメント
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const result = `${{ steps.spec_check.outputs.result }}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## 📋 AI仕様整合性チェック結果\n\n${result}\n\n---\n*このチェックはClaude AIによって自動実行されました*`
+            });

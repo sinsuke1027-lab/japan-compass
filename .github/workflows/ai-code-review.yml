@@ -1,0 +1,87 @@
+name: AIコードレビュー
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'specs/**'
+
+# 同一PRへの連続プッシュは最新のみ処理（コスト削減）
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-code-review:
+    runs-on: ubuntu-latest
+    # WIPラベルがついている場合はスキップ
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'WIP') }}
+
+    steps:
+      - name: コードをチェックアウト
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 差分を取得
+        id: diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD -- \
+            '*.ts' '*.tsx' '*.js' '*.jsx' '*.py' '*.go' \
+            > /tmp/code_diff.txt
+          echo "diff_size=$(wc -c < /tmp/code_diff.txt)" >> $GITHUB_OUTPUT
+
+      - name: AIコードレビューを実行
+        id: review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          DIFF=$(cat /tmp/code_diff.txt | head -c 8000)
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_BODY="${{ github.event.pull_request.body }}"
+
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d '{
+              "model": "claude-sonnet-4-6",
+              "max_tokens": 2000,
+              "system": [{
+                "type": "text",
+                "text": "あなたはシニアエンジニアとしてコードレビューを行います。\n\n以下の観点でレビューしてください。問題がなければ「問題なし」と記載してください。\n\n1. **バグ・ロジックエラー**: 明らかな誤りや想定外の動作\n2. **セキュリティ**: 脆弱性・シークレット漏洩リスク\n3. **パフォーマンス**: 非効率な処理\n4. **可読性**: 命名・コメントの改善点\n5. **総評**: 全体的な評価（✅ 承認 / ⚠️ 要修正 / ❌ ブロッカーあり）\n\n日本語で簡潔に記述してください。",
+                "cache_control": {"type": "ephemeral"}
+              }],
+              "messages": [{
+                "role": "user",
+                "content": "## PRタイトル\n'"$PR_TITLE"'\n\n## PR説明\n'"$PR_BODY"'\n\n## コード差分\n```\n'"$DIFF"'\n```"
+              }]
+            }')
+
+          REVIEW=$(echo $RESPONSE | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          print(data['content'][0]['text'])
+          " 2>/dev/null || echo "レビューの取得に失敗しました")
+
+          echo "review<<EOF" >> $GITHUB_OUTPUT
+          echo "$REVIEW" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: レビュー結果をPRにコメント
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const review = `${{ steps.review.outputs.review }}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## 🤖 AIコードレビュー結果\n\n${review}\n\n---\n*このレビューはClaude AIによって自動生成されました*`
+            });

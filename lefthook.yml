@@ -1,0 +1,109 @@
+# lefthook.yml
+# コミット前の自動品質チェック
+# インストール: npx lefthook install
+# 参考: https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  commands:
+
+    # ============================================================
+    # リント（JavaScript / TypeScript）
+    # ============================================================
+    eslint:
+      glob: "*.{js,jsx,ts,tsx}"
+      run: npx eslint --fix {staged_files}
+      skip:
+        - merge
+        - rebase
+
+    # ============================================================
+    # フォーマット（Prettier）
+    # ============================================================
+    prettier:
+      glob: "*.{js,jsx,ts,tsx,json,css,md}"
+      run: npx prettier --write {staged_files} && git add {staged_files}
+      skip:
+        - merge
+
+    # ============================================================
+    # 型チェック（TypeScript）
+    # ============================================================
+    typecheck:
+      glob: "*.{ts,tsx}"
+      run: npx tsc --noEmit
+      fail_text: "TypeScriptの型エラーがあります。修正してからコミットしてください。"
+
+    # ============================================================
+    # Pythonリント（ruff）
+    # ruffがインストールされていない場合はスキップ（警告のみ）
+    # ============================================================
+    ruff:
+      glob: "*.py"
+      run: |
+        if command -v ruff &> /dev/null; then
+          ruff check --fix {staged_files} && ruff format {staged_files}
+        else
+          echo "⚠️  ruff がインストールされていません（スキップ）"
+          echo "   インストール: pip install ruff"
+        fi
+
+    # ============================================================
+    # シークレット漏洩チェック
+    # ============================================================
+    secret-check:
+      run: |
+        # APIキー・パスワードのパターンをチェック
+        PATTERNS=(
+          "sk-ant-"
+          "ghp_"
+          "AKIA"
+          "password\s*=\s*['\"][^'\"]{4}"
+          "secret\s*=\s*['\"][^'\"]{4}"
+        )
+        for PATTERN in "${PATTERNS[@]}"; do
+          if git diff --cached | grep -iE "$PATTERN"; then
+            echo "🚫 シークレットらしき文字列が検出されました"
+            echo "   コミットをブロックします"
+            exit 1
+          fi
+        done
+        echo "✅ シークレットチェック: 問題なし"
+      fail_text: "シークレットをコードに含めないでください。.envに移動してください。"
+
+commit-msg:
+  commands:
+    # ============================================================
+    # コミットメッセージの形式チェック
+    # ============================================================
+    conventional-commit:
+      run: |
+        MSG=$(cat {1})
+        # Issue番号は省略可（chore/styleなど自明なものは除く）
+        # docs/commit-convention.md 参照
+        PATTERN="^(feat|fix|docs|style|refactor|test|chore|ci|perf|revert)(\(#[0-9]+\))?: .{1,100}"
+        if ! echo "$MSG" | grep -qE "$PATTERN"; then
+          echo "❌ コミットメッセージの形式が不正です"
+          echo "   正しい形式: feat(#12): 機能名を追加"
+          echo "   Issue番号省略例: chore: dependenciesを更新"
+          echo "   参照: docs/commit-convention.md"
+          exit 1
+        fi
+        echo "✅ コミットメッセージ: OK"
+
+# ============================================================
+# CIと同じチェックをローカルでも実行（任意）
+# テストが存在するプロジェクトでは以下のコメントを解除してください
+# ============================================================
+pre-push:
+  commands:
+    test:
+      run: |
+        echo "🧪 テスト設定の確認..."
+        # ▼▼▼ プロジェクトに合わせていずれか1行のコメントを解除 ▼▼▼
+        # npm test -- --passWithNoTests   # Node.js / TypeScript の場合
+        # pytest --tb=short               # Python の場合
+        # go test ./...                   # Go の場合
+        # ▲▲▲ コメント解除する行はここまで ▲▲▲
+        echo "ℹ️  テストが設定されていません（pre-push をスキップ）"
+        echo "   lefthook.yml の pre-push セクションでコマンドを有効にしてください"

@@ -1,0 +1,82 @@
+name: リリースノート自動生成
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release-notes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - name: コミットログを取得
+        id: commits
+        run: |
+          # 前回のmainマージからのコミットログを取得
+          COMMITS=$(git log --oneline -20 --pretty=format:"- %s (%h)" 2>/dev/null)
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: AIでリリースノートを生成
+        id: notes
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          COMMITS="${{ steps.commits.outputs.commits }}"
+          DATE=$(date '+%Y-%m-%d')
+
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d '{
+              "model": "claude-sonnet-4-6",
+              "max_tokens": 1000,
+              "messages": [{
+                "role": "user",
+                "content": "以下のコミットログからリリースノートを生成してください。\n\nコミットログ:\n'"$COMMITS"'\n\n以下の形式で出力してください:\n## リリースノート '"$DATE"'\n\n### ✨ 新機能\n- （featコミットから）\n\n### 🐛 バグ修正\n- （fixコミットから）\n\n### 🔧 改善・その他\n- （その他のコミットから）\n\n日本語で記述してください。該当するものがない場合はカテゴリを省略してください。"
+              }]
+            }')
+
+          NOTES=$(echo $RESPONSE | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          print(data['content'][0]['text'])
+          " 2>/dev/null || echo "リリースノートの生成に失敗しました")
+
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: CHANGELOG.mdを更新
+        run: |
+          NOTES="${{ steps.notes.outputs.notes }}"
+          DATE=$(date '+%Y-%m-%d')
+
+          # 既存のCHANGELOGがあれば先頭に追記、なければ新規作成
+          if [ -f "CHANGELOG.md" ]; then
+            echo "$NOTES" > /tmp/new_entry.md
+            echo "" >> /tmp/new_entry.md
+            cat CHANGELOG.md >> /tmp/new_entry.md
+            mv /tmp/new_entry.md CHANGELOG.md
+          else
+            echo "# CHANGELOG" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "$NOTES" >> CHANGELOG.md
+          fi
+
+      - name: CHANGELOG.mdをコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git diff --staged --quiet || git commit -m "docs: CHANGELOG自動更新 [skip ci]"
+          git push

@@ -1,0 +1,77 @@
+name: Slack通知
+
+on:
+  workflow_run:
+    workflows: ['GCPデプロイ']
+    types: [completed]
+  # 直接呼び出し可能
+  workflow_call:
+    inputs:
+      status:
+        required: true
+        type: string  # success / failure / warning
+      message:
+        required: true
+        type: string
+      details:
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    if: ${{ vars.SLACK_NOTIFY_ENABLED != 'false' }}
+
+    steps:
+      - name: 通知メッセージを構築
+        id: message
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            RUN=${{ toJson(github.event.workflow_run) }}
+            CONCLUSION="${{ github.event.workflow_run.conclusion }}"
+
+            if [ "$CONCLUSION" = "success" ]; then
+              STATUS="success"
+              EMOJI="✅"
+              COLOR="good"
+            else
+              STATUS="failure"
+              EMOJI="❌"
+              COLOR="danger"
+            fi
+
+            MSG="${EMOJI} *デプロイ${CONCLUSION}*"
+            DETAILS="ブランチ: ${{ github.event.workflow_run.head_branch }}\nコミット: ${{ github.event.workflow_run.head_sha }}\n<${{ github.event.workflow_run.html_url }}|詳細を見る>"
+          else
+            STATUS="${{ inputs.status }}"
+            MSG="${{ inputs.message }}"
+            DETAILS="${{ inputs.details }}"
+
+            if [ "$STATUS" = "success" ]; then
+              COLOR="good"
+            elif [ "$STATUS" = "warning" ]; then
+              COLOR="warning"
+            else
+              COLOR="danger"
+            fi
+          fi
+
+          echo "message=$MSG" >> $GITHUB_OUTPUT
+          echo "details=$DETAILS" >> $GITHUB_OUTPUT
+          echo "color=$COLOR" >> $GITHUB_OUTPUT
+
+      - name: Slackに通知
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        run: |
+          curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "attachments": [{
+                "color": "${{ steps.message.outputs.color }}",
+                "text": "${{ steps.message.outputs.message }}\n${{ steps.message.outputs.details }}",
+                "footer": "GitHub Actions | ${{ github.repository }}"
+              }]
+            }'

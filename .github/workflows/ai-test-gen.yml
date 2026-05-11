@@ -1,0 +1,103 @@
+name: AIテストコード生成
+
+on:
+  pull_request:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      file_path:
+        description: 'テスト生成対象のファイルパス'
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  generate-tests:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'WIP') }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 新規・変更ファイルを取得
+        id: files
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "files=${{ inputs.file_path }}" >> $GITHUB_OUTPUT
+          else
+            FILES=$(git diff origin/${{ github.base_ref }}...HEAD --name-only \
+              | grep -E '\.(ts|tsx|js|jsx|py)$' \
+              | grep -v '\.test\.' \
+              | grep -v '\.spec\.' \
+              | head -3)
+            echo "files=$FILES" >> $GITHUB_OUTPUT
+          fi
+
+      - name: AIテストコードを生成
+        id: generate
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          FILES="${{ steps.files.outputs.files }}"
+          if [ -z "$FILES" ]; then
+            echo "テスト生成対象のファイルがありません"
+            exit 0
+          fi
+
+          for FILE in $FILES; do
+            if [ -f "$FILE" ]; then
+              CODE=$(cat "$FILE" | head -c 4000)
+
+              RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+                -H "x-api-key: $ANTHROPIC_API_KEY" \
+                -H "anthropic-version: 2023-06-01" \
+                -H "content-type: application/json" \
+                -d '{
+                  "model": "claude-sonnet-4-6",
+                  "max_tokens": 3000,
+                  "system": [{
+                    "type": "text",
+                    "text": "あなたはテストエンジニアとして、与えられたコードのユニットテストを生成します。\n\n要件:\n- ファイルの拡張子に合ったテストフレームワークを使用\n- 正常系・異常系・境界値を網羅\n- テストの説明は日本語\n- モック・スタブを適切に使用\n- テストコードのみを出力（説明文不要）",
+                    "cache_control": {"type": "ephemeral"}
+                  }],
+                  "messages": [{
+                    "role": "user",
+                    "content": "以下のコードに対するユニットテストを生成してください。\n\n## ファイル: '"$FILE"'\n```\n'"$CODE"'\n```"
+                  }]
+                }')
+
+              TEST_CODE=$(echo $RESPONSE | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          print(data['content'][0]['text'])
+          " 2>/dev/null)
+
+              echo "### テスト候補: $FILE" >> /tmp/test_suggestions.txt
+              echo '```' >> /tmp/test_suggestions.txt
+              echo "$TEST_CODE" >> /tmp/test_suggestions.txt
+              echo '```' >> /tmp/test_suggestions.txt
+              echo "" >> /tmp/test_suggestions.txt
+            fi
+          done
+
+      - name: テスト候補をPRにコメント
+        if: hashFiles('/tmp/test_suggestions.txt') != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              const suggestions = fs.readFileSync('/tmp/test_suggestions.txt', 'utf8');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `## 🧪 AIテストコード候補\n\n以下のテストコードの追加を検討してください。\n\n${suggestions}\n\n---\n*このテスト候補はClaude AIによって自動生成されました。内容を確認の上、適切に修正してください。*`
+              });
+            } catch(e) {
+              console.log('テスト提案ファイルが見つかりません');
+            }

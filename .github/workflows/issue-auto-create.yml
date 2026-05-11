@@ -1,0 +1,82 @@
+name: Issue自動起票
+
+on:
+  workflow_call:
+    inputs:
+      title:
+        required: true
+        type: string
+      body:
+        required: true
+        type: string
+      labels:
+        required: false
+        type: string
+        default: 'automated,bug'
+  workflow_dispatch:
+    inputs:
+      title:
+        description: 'Issueタイトル'
+        required: true
+      body:
+        description: 'Issue本文'
+        required: true
+      labels:
+        description: 'ラベル（カンマ区切り）'
+        default: 'automated'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-issue:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: AIによるIssue内容の整形
+        id: format
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          TITLE="${{ inputs.title }}"
+          BODY="${{ inputs.body }}"
+
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d '{
+              "model": "claude-sonnet-4-6",
+              "max_tokens": 800,
+              "messages": [{
+                "role": "user",
+                "content": "以下の情報をGitHub Issueとして整形してください。\n\nタイトル: '"$TITLE"'\n\n内容:\n'"$BODY"'\n\n以下の形式で出力してください（マークダウン）:\n## 概要\n（簡潔な説明）\n\n## 詳細\n（詳細な内容）\n\n## 対処方法（推奨）\n（推奨される対処方法）\n\n日本語で記述してください。"
+              }]
+            }')
+
+          FORMATTED=$(echo $RESPONSE | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          print(data['content'][0]['text'])
+          " 2>/dev/null || echo "$BODY")
+
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$FORMATTED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Issueを作成
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `${{ inputs.title }}`;
+            const body = `${{ steps.format.outputs.body }}`;
+            const labels = `${{ inputs.labels }}`.split(',').map(l => l.trim());
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body + '\n\n---\n*このIssueはGitHub Actionsによって自動起票されました*',
+              labels: labels
+            });

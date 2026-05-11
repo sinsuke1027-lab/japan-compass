@@ -1,0 +1,115 @@
+name: GCPエラーからIssue起票
+
+on:
+  schedule:
+    # 毎時0分に実行
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-errors:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: GCP認証
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: gcloudセットアップ
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Cloud Loggingからエラーを取得
+        id: errors
+        run: |
+          # 過去1時間のERROR以上のログを取得
+          SINCE=$(date -u -d '1 hour ago' '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || \
+                  date -u -v-1H '+%Y-%m-%dT%H:%M:%SZ')
+
+          ERRORS=$(gcloud logging read \
+            "severity>=ERROR AND timestamp>=\"$SINCE\"" \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --limit=10 \
+            --format='value(textPayload,jsonPayload.message)' 2>/dev/null | head -c 3000)
+
+          if [ -z "$ERRORS" ]; then
+            echo "errors_found=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "errors_found=true" >> $GITHUB_OUTPUT
+          echo "errors<<EOF" >> $GITHUB_OUTPUT
+          echo "$ERRORS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: AIでエラーを分析
+        id: analysis
+        if: steps.errors.outputs.errors_found == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          ERRORS="${{ steps.errors.outputs.errors }}"
+
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d '{
+              "model": "claude-sonnet-4-6",
+              "max_tokens": 800,
+              "messages": [{
+                "role": "user",
+                "content": "以下のGCPエラーログを分析して、対処が必要なものをまとめてください。\n\n```\n'"$ERRORS"'\n```\n\n以下の形式で出力してください:\n## エラー分析\n\n### 深刻度\n🔴 緊急 / 🟡 要対応 / 🔵 監視継続\n\n### 主なエラー内容\n\n### 推奨対処方法\n\n対処不要な軽微なエラーのみの場合は「対処不要」と記載してください。\n日本語で回答してください。"
+              }]
+            }')
+
+          ANALYSIS=$(echo $RESPONSE | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          print(data['content'][0]['text'])
+          " 2>/dev/null)
+
+          # 対処不要でなければIssue起票フラグを立てる
+          if ! echo "$ANALYSIS" | grep -q "対処不要"; then
+            echo "needs_issue=true" >> $GITHUB_OUTPUT
+          fi
+
+          echo "analysis<<EOF" >> $GITHUB_OUTPUT
+          echo "$ANALYSIS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 既存の未解決Issueを確認（重複防止）
+        id: check_duplicate
+        if: steps.analysis.outputs.needs_issue == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'production,automated'
+            });
+            const existing = issues.data.find(i => i.title.startsWith('🚨 本番エラー検出'));
+            return existing ? 'duplicate' : 'new';
+
+      - name: エラーIssueを起票（重複なしの場合）
+        if: steps.analysis.outputs.needs_issue == 'true' && steps.check_duplicate.outputs.result != 'duplicate'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const analysis = `${{ steps.analysis.outputs.analysis }}`;
+            const date = new Date().toISOString();
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 本番エラー検出: ${date.substring(0,16)}`,
+              body: `GCP Cloud Loggingでエラーが検出されました。\n\n${analysis}\n\n---\n*このIssueはGitHub Actionsによって自動起票されました（毎時チェック）*`,
+              labels: ['bug', 'production', 'automated']
+            });

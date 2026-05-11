@@ -1,0 +1,94 @@
+name: GCPデプロイ
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'デプロイ先環境'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  GCP_REGION: asia-northeast1
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'production' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: GCP認証
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: gcloudセットアップ
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: GCPプロジェクト設定
+        run: |
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+          gcloud config set run/region ${{ env.GCP_REGION }}
+
+      # ============================================================
+      # Cloud Run デプロイ（コンテナベースの場合）
+      # ============================================================
+      - name: Dockerイメージをビルド・プッシュ
+        run: |
+          IMAGE="$GCP_REGION-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/app/api:${{ github.sha }}"
+          gcloud builds submit --tag $IMAGE .
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+      - name: Cloud Runにデプロイ
+        run: |
+          gcloud run deploy api \
+            --image $IMAGE \
+            --region ${{ env.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-secrets="DATABASE_URL=database-url:latest,APP_SECRET_KEY=app-secret-key:latest" \
+            --memory 512Mi \
+            --cpu 1 \
+            --min-instances 0 \
+            --max-instances 10
+
+      # ============================================================
+      # App Engine デプロイの場合（上記をコメントアウトして使用）
+      # ============================================================
+      # - name: App Engineにデプロイ
+      #   run: gcloud app deploy --quiet
+
+      - name: デプロイ完了通知
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.sha.substring(0, 7);
+            console.log(`✅ デプロイ完了: ${sha}`);
+
+  create-failure-issue:
+    needs: deploy
+    if: ${{ failure() }}
+    uses: ./.github/workflows/issue-auto-create.yml
+    with:
+      title: '🚨 デプロイ失敗: ${{ github.sha }}'
+      body: |
+        デプロイが失敗しました。
+
+        - コミット: ${{ github.sha }}
+        - ブランチ: ${{ github.ref }}
+        - ワークフロー: ${{ github.run_id }}
+        - 実行URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      labels: 'bug,deployment,automated'
+    secrets: inherit

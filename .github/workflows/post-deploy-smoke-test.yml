@@ -1,0 +1,74 @@
+name: デプロイ後スモークテスト
+
+on:
+  workflow_run:
+    workflows: ['GCPデプロイ']
+    types: [completed]
+
+env:
+  GCP_REGION: asia-northeast1
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      app_url: ${{ steps.url.outputs.url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: アプリURLを取得
+        id: url
+        run: |
+          # Cloud RunのURLを取得
+          APP_URL=$(gcloud run services describe api \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)' 2>/dev/null || echo "${{ vars.APP_URL }}")
+          echo "url=$APP_URL" >> $GITHUB_OUTPUT
+
+      - name: ヘルスチェック
+        id: health
+        run: |
+          URL="${{ steps.url.outputs.url }}"
+          MAX_RETRY=5
+          RETRY_INTERVAL=10
+
+          for i in $(seq 1 $MAX_RETRY); do
+            echo "ヘルスチェック試行 $i/$MAX_RETRY..."
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL/health" || echo "000")
+
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "✅ ヘルスチェック成功（ステータス: $HTTP_STATUS）"
+              echo "status=ok" >> $GITHUB_OUTPUT
+              break
+            fi
+
+            echo "⏳ ステータス: $HTTP_STATUS - ${RETRY_INTERVAL}秒後に再試行..."
+            sleep $RETRY_INTERVAL
+          done
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+  create-failure-issue:
+    needs: smoke-test
+    if: ${{ failure() }}
+    uses: ./.github/workflows/issue-auto-create.yml
+    with:
+      title: '🚨 スモークテスト失敗: デプロイ後の動作確認NG'
+      body: |
+        デプロイ後のスモークテストが失敗しました。
+
+        - デプロイURL: ${{ needs.smoke-test.outputs.app_url }}
+        - 実行ワークフロー: ${{ github.run_id }}
+        - 確認URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+        **即座に確認が必要です。**
+      labels: 'bug,deployment,urgent,automated'
+    secrets: inherit

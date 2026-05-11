@@ -1,0 +1,46 @@
+version: 2
+# 方針:
+#   - 毎週月曜の朝9時に自動更新PRを作成
+#   - PR は各エコシステムごとに最大5件まで（蓄積防止）
+#   - セキュリティパッチは dependabot security updates で別途自動適用
+#   - PRを受け取ったらテストが通ることを確認してからマージする
+updates:
+  # npm パッケージの自動更新
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "automated"
+
+  # GitHub Actions の自動更新
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci/cd"
+      - "automated"
+
+  # Python パッケージ（Pythonを使用するプロジェクトはコメントを解除してください）
+  # - package-ecosystem: "pip"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #     day: "monday"
+  #     time: "09:00"
+  #     timezone: "Asia/Tokyo"
+  #   open-pull-requests-limit: 5
+  #   labels:
+  #     - "dependencies"
+  #     - "automated"

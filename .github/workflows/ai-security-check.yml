@@ -1,0 +1,87 @@
+name: AIセキュリティチェック
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+concurrency:
+  group: ai-security-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  security-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 差分を取得
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > /tmp/code_diff.txt
+
+      - name: AIセキュリティチェックを実行
+        id: security
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          DIFF=$(cat /tmp/code_diff.txt | head -c 6000)
+
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d '{
+              "model": "claude-sonnet-4-6",
+              "max_tokens": 1500,
+              "system": [{
+                "type": "text",
+                "text": "あなたはセキュリティエンジニアとしてコードのセキュリティチェックを行います。\n\n以下の項目を確認してください:\n1. **シークレット漏洩**: APIキー・パスワードのハードコード\n2. **インジェクション**: SQLインジェクション・XSS・コマンドインジェクション\n3. **認証・認可**: 不適切なアクセス制御\n4. **安全でない関数**: eval()・危険なデシリアライズ等\n5. **依存関係**: 脆弱性のあるパッケージの追加\n\n問題がなければ「セキュリティ: ✅ 問題なし」と記載してください。\n問題がある場合は深刻度（🔴 緊急 / 🟡 警告 / 🔵 情報）と共に記載してください。\n日本語で回答してください。",
+                "cache_control": {"type": "ephemeral"}
+              }],
+              "messages": [{
+                "role": "user",
+                "content": "以下のコード差分をセキュリティの観点でチェックしてください。\n\n```\n'"$DIFF"'\n```"
+              }]
+            }')
+
+          RESULT=$(echo $RESPONSE | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          print(data['content'][0]['text'])
+          " 2>/dev/null || echo "チェックの実行に失敗しました")
+
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          echo "$RESULT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          # 緊急度の高い問題があれば失敗させる
+          if echo "$RESULT" | grep -q "🔴 緊急"; then
+            echo "has_critical=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: チェック結果をPRにコメント
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const result = `${{ steps.security.outputs.result }}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## 🔐 AIセキュリティチェック結果\n\n${result}\n\n---\n*このチェックはClaude AIによって自動実行されました*`
+            });
+
+      - name: 緊急問題がある場合は失敗
+        if: steps.security.outputs.has_critical == 'true'
+        run: |
+          echo "🔴 セキュリティ上の緊急問題が検出されました。PRを確認してください。"
+          exit 1

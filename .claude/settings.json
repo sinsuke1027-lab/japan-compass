@@ -1,0 +1,62 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(make:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Read(**)",
+      "Write(MEMORY.md)",
+      "Write(CLAUDE.md)",
+      "Write(src/**)",
+      "Write(specs/**)",
+      "Write(docs/**)",
+      "Write(tests/**)",
+      "Write(.claude/skills/**)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(curl * | bash)",
+      "Write(.env)"
+    ]
+  },
+  "env": {
+    "PROJECT_ROOT": "."
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/post-edit-lint.sh \"$CLAUDE_TOOL_INPUT_PATH\"",
+            "description": "ファイル編集後にlint/formatを自動実行"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pre-bash-guard.sh \"$CLAUDE_TOOL_INPUT_CMD\"",
+            "description": "危険なコマンドの実行を事前にブロック"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pre-write-guard.sh \"$CLAUDE_TOOL_INPUT_PATH\"",
+            "description": "書き込み禁止ファイルへの操作をブロック"
+          }
+        ]
+      }
+    ]
+  }
+}

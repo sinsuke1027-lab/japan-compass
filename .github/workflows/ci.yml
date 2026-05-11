@@ -1,0 +1,130 @@
+name: CI テスト実行
+
+# ============================================================
+# 🚀 セットアップ手順（プロジェクト開始時に一度だけ設定）
+#   STEP 1: 使用するスタックを下の「選択スタック」に記入する
+#   STEP 2: 対応するブロックのコメントを解除する（▼〜▲ の範囲）
+#   STEP 3: ⚠️ フォールバックstep（⚠️マークのstep）を削除する
+#   STEP 4: PRを作成してCIが動くことを確認する
+#
+# 選択スタック: ここに記入 → （例: Node.js / Python / Go）
+# ============================================================
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+# 同一PRへの連続プッシュは最新のみ処理（コスト削減）
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ▼ スタック設定後にこのstepを削除してください ▼
+      - name: ⚠️ スタック未設定（このstepを削除してください）
+        run: |
+          echo "::error::ci.yml のスタックブロックがすべてコメントアウトされています。"
+          echo "::error::docs/ci-setup.md を参照してSTEP 1-2を実行し、このstepを削除してください。"
+          exit 1
+      # ▲ スタック設定後にこのstepを削除してください ▲
+
+      # ▼ Node.js を使う場合はここからコメント解除 ▼
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '20'
+      #     cache: 'npm'
+      # - name: 依存パッケージのインストール
+      #   run: npm ci
+      # - id: run-tests
+      #   name: テスト実行
+      #   run: npm test
+      # - name: 型チェック（TypeScript の場合）
+      #   run: npx tsc --noEmit
+      # ▲ Node.js ここまで ▲
+
+      # ▼ Python を使う場合はここからコメント解除 ▼
+      # - uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.12'
+      #     cache: 'pip'
+      # - name: 依存パッケージのインストール
+      #   run: pip install -r requirements.txt
+      # - id: run-tests
+      #   name: テスト実行
+      #   run: pytest --tb=short
+      # ▲ Python ここまで ▲
+
+      # ▼ Go を使う場合はここからコメント解除 ▼
+      # - uses: actions/setup-go@v5
+      #   with:
+      #     go-version: '1.22'
+      # - id: run-tests
+      #   name: テスト実行
+      #   run: go test ./...
+      # ▲ Go ここまで ▲
+
+      - name: PR にテスト結果をコメント
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+          COMMIT_SHA: ${{ github.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        with:
+          script: |
+            const status = process.env.JOB_STATUS === 'success' ? '✅ テスト通過' : '❌ テスト失敗';
+            const sha = process.env.COMMIT_SHA.substring(0, 7);
+            const body = [
+              '<!-- ci-result -->',
+              `## ${status}`,
+              '',
+              '| 項目 | 内容 |',
+              '|------|------|',
+              `| ブランチ | \`${process.env.HEAD_REF}\` → \`${process.env.BASE_REF}\` |`,
+              `| コミット | \`${sha}\` |`,
+              `| 実行ログ | [GitHub Actions](https://github.com/${process.env.REPOSITORY}/actions/runs/${process.env.RUN_ID}) |`,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('<!-- ci-result -->')
+            );
+
+            try {
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body,
+                });
+              }
+            } catch (err) {
+              core.warning(`PR コメントの投稿に失敗しました: ${err.message}`);
+            }

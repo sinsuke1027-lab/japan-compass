@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "description": "GitHub Issue・PR・ブランチ操作"
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "claude-mem"],
+      "description": "セッションをまたいだ記憶の保持・検索"
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${PROJECT_ROOT}"
+      ],
+      "description": "プロジェクトファイルへのアクセス"
+    }
+  }
+}
