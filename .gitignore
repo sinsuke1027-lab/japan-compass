@@ -58,3 +58,11 @@ yarn-debug.log*
 terraform.tfstate
 terraform.tfstate.backup
 .terraform/
+
+# --- Expo ---
+.expo/
+expo-env.d.ts
+*.jks
+*.p8
+*.mobileprovision
+web-build/
