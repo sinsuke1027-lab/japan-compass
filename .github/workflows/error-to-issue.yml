@@ -2,8 +2,8 @@ name: GCPエラーからIssue起票
 
 on:
   schedule:
-    # 毎時0分に実行
-    - cron: '0 * * * *'
+    # 6時間ごとに実行（JST 3/9/15/21時）
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -90,14 +90,28 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const issues = await github.rest.issues.listForRepo({
+            const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            // open Issue を確認
+            const openIssues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
-              labels: 'production,automated'
+              labels: 'production,automated',
+              since
             });
-            const existing = issues.data.find(i => i.title.startsWith('🚨 本番エラー検出'));
-            return existing ? 'duplicate' : 'new';
+            if (openIssues.data.find(i => i.title.startsWith('🚨 本番エラー検出'))) {
+              return 'duplicate';
+            }
+            // 過去24時間以内にクローズされた Issue も重複扱い
+            const closedIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              labels: 'production,automated',
+              since
+            });
+            const recentlyClosed = closedIssues.data.find(i => i.title.startsWith('🚨 本番エラー検出'));
+            return recentlyClosed ? 'duplicate' : 'new';
 
       - name: エラーIssueを起票（重複なしの場合）
         if: steps.analysis.outputs.needs_issue == 'true' && steps.check_duplicate.outputs.result != 'duplicate'
