@@ -69,7 +69,7 @@ jobs:
           fi
 
       - name: チェック結果をPRにコメント
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const result = `${{ steps.security.outputs.result }}`;

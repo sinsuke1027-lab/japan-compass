@@ -75,7 +75,7 @@ jobs:
 
       - name: PR にテスト結果をコメント
         if: always() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           JOB_STATUS: ${{ job.status }}
           COMMIT_SHA: ${{ github.sha }}

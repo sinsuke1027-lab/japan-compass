@@ -87,7 +87,7 @@ jobs:
       - name: 既存の未解決Issueを確認（重複防止）
         id: check_duplicate
         if: steps.analysis.outputs.needs_issue == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -115,7 +115,7 @@ jobs:
 
       - name: エラーIssueを起票（重複なしの場合）
         if: steps.analysis.outputs.needs_issue == 'true' && steps.check_duplicate.outputs.result != 'duplicate'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const analysis = `${{ steps.analysis.outputs.analysis }}`;
