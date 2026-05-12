@@ -1,85 +1,731 @@
 openapi: 3.0.3
 info:
-  title: プロジェクト名 API
+  title: Japan Compass API
   description: |
-    APIの概要説明
+    Supabase PostgREST を介した Japan Compass のデータアクセス仕様。
+    カスタム API サーバーは持たず、Supabase JS Client から PostgREST を直接呼び出す。
+
+    ## ベース URL
+    `https://{SUPABASE_PROJECT_REF}.supabase.co`
+
+    ## 認証
+    - コンテンツ系エンドポイント（manners / phrases / spots）: 認証不要（public read）
+    - journal_entries: Supabase Anonymous Auth の JWT Bearer トークンが必要
+
+    ## クライアントコード例
+    ```typescript
+    import { createClient } from '@supabase/supabase-js'
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    ```
   version: 1.0.0
-  contact:
-    name: 開発チーム
 
 servers:
-  - url: https://api.example.com/v1
-    description: 本番環境
-  - url: https://api-stg.example.com/v1
-    description: ステージング環境
-  - url: http://localhost:3000/v1
-    description: ローカル開発環境
+  - url: https://{project_ref}.supabase.co
+    description: Supabase Cloud（本番）
+    variables:
+      project_ref:
+        default: your-project-ref
+        description: Supabase プロジェクト参照ID
 
 tags:
-  - name: health
-    description: ヘルスチェック
   - name: auth
-    description: 認証
-  - name: example
-    description: サンプルリソース
+    description: Supabase 匿名認証
+  - name: manners
+    description: マナー・文化ガイド（public read）
+  - name: shrine
+    description: 神社・寺院参拝ガイド（public read）
+  - name: phrases
+    description: 便利フレーズ集（public read）
+  - name: spots
+    description: サステナブルスポット（public read）
+  - name: journal
+    description: 活動記録（認証必須・RLS）
 
 paths:
-  /health:
-    get:
-      tags: [health]
-      summary: ヘルスチェック
+
+  # ─────────────────────────────────────────
+  # AUTH
+  # ─────────────────────────────────────────
+
+  /auth/v1/signup:
+    post:
+      tags: [auth]
+      summary: 匿名サインイン
+      description: |
+        サインアップ不要で匿名ユーザーを作成し、JWT トークンを取得する。
+        アプリ初回起動時に自動実行。以降は AsyncStorage に永続化。
+
+        **クライアントコード:**
+        ```typescript
+        const { data, error } = await supabase.auth.signInAnonymously()
+        ```
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
       responses:
         '200':
-          description: 正常
+          description: 匿名ユーザー作成成功
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
+                $ref: '#/components/schemas/AuthSession'
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
-  /auth/login:
+  # ─────────────────────────────────────────
+  # MANNERS
+  # ─────────────────────────────────────────
+
+  /rest/v1/categories:
+    get:
+      tags: [manners]
+      summary: マナーカテゴリ一覧取得
+      description: |
+        シーン別カテゴリ（電車・レストランなど）を表示順に取得。
+
+        **クライアントコード:**
+        ```typescript
+        const { data } = await supabase
+          .from('categories')
+          .select('id, slug, name_en, icon, display_order')
+          .order('display_order')
+        ```
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+        - $ref: '#/components/parameters/OrderParam'
+      responses:
+        '200':
+          description: カテゴリ一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+
+  /rest/v1/manners:
+    get:
+      tags: [manners]
+      summary: シーン別マナー取得
+      description: |
+        指定カテゴリのマナーを do/don't ごとに取得。
+
+        **クライアントコード:**
+        ```typescript
+        const { data } = await supabase
+          .from('manners')
+          .select('id, type, title_en, description_en, context_en, display_order')
+          .eq('category_id', categoryId)
+          .order('type')        // 'do' → 'dont' 順
+          .order('display_order')
+        ```
+      parameters:
+        - name: category_id
+          in: query
+          description: カテゴリID フィルター（例: `eq.{uuid}`）
+          schema:
+            type: string
+            example: eq.550e8400-e29b-41d4-a716-446655440000
+        - $ref: '#/components/parameters/SelectParam'
+        - $ref: '#/components/parameters/OrderParam'
+      responses:
+        '200':
+          description: マナーコンテンツ一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Manner'
+
+  # ─────────────────────────────────────────
+  # SHRINE GUIDE
+  # ─────────────────────────────────────────
+
+  /rest/v1/shrine_steps:
+    get:
+      tags: [shrine]
+      summary: 参拝ステップ一覧取得
+      description: |
+        手順 1〜5 を順番に取得。
+
+        **クライアントコード:**
+        ```typescript
+        const { data } = await supabase
+          .from('shrine_steps')
+          .select('*')
+          .order('step_number')
+        ```
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+        - $ref: '#/components/parameters/OrderParam'
+      responses:
+        '200':
+          description: 参拝ステップ一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShrineStep'
+
+  # ─────────────────────────────────────────
+  # PHRASES
+  # ─────────────────────────────────────────
+
+  /rest/v1/phrase_categories:
+    get:
+      tags: [phrases]
+      summary: フレーズカテゴリ一覧取得
+      description: |
+        **クライアントコード:**
+        ```typescript
+        const { data } = await supabase
+          .from('phrase_categories')
+          .select('id, slug, name_en, icon, display_order')
+          .order('display_order')
+        ```
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+        - $ref: '#/components/parameters/OrderParam'
+      responses:
+        '200':
+          description: フレーズカテゴリ一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PhraseCategory'
+
+  /rest/v1/phrases:
+    get:
+      tags: [phrases]
+      summary: フレーズ一覧取得
+      description: |
+        指定カテゴリのフレーズ一覧を取得。
+
+        **クライアントコード:**
+        ```typescript
+        const { data } = await supabase
+          .from('phrases')
+          .select('id, japanese, romaji, english, audio_url, display_order')
+          .eq('category_id', categoryId)
+          .order('display_order')
+        ```
+      parameters:
+        - name: category_id
+          in: query
+          description: フレーズカテゴリID フィルター
+          schema:
+            type: string
+            example: eq.550e8400-e29b-41d4-a716-446655440001
+        - $ref: '#/components/parameters/SelectParam'
+        - $ref: '#/components/parameters/OrderParam'
+      responses:
+        '200':
+          description: フレーズ一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Phrase'
+
+  # ─────────────────────────────────────────
+  # SUSTAINABLE SPOTS
+  # ─────────────────────────────────────────
+
+  /rest/v1/sustainable_spots:
+    get:
+      tags: [spots]
+      summary: サステナブルスポット一覧取得
+      description: |
+        現在地から指定距離以内のスポットを取得（PostGIS 使用）。
+        距離フィルターは RPC 経由で実行する。
+        フィルターなし版は全スポット取得（オフラインキャッシュ用）。
+
+        **クライアントコード（距離フィルターなし・全件）:**
+        ```typescript
+        const { data } = await supabase
+          .from('sustainable_spots')
+          .select('id, name_en, name_ja, type, description_en, latitude, longitude')
+          .eq('is_active', true)
+          .order('name_en')
+        ```
+      parameters:
+        - name: is_active
+          in: query
+          schema:
+            type: string
+            example: eq.true
+        - name: type
+          in: query
+          description: タイプフィルター（例: `eq.shrine`）
+          schema:
+            type: string
+            example: eq.shrine
+        - $ref: '#/components/parameters/SelectParam'
+      responses:
+        '200':
+          description: スポット一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SustainableSpot'
+
+  /rest/v1/rpc/spots_within_radius:
     post:
-      tags: [auth]
-      summary: ログイン
+      tags: [spots]
+      summary: 現在地から距離フィルターでスポット取得
+      description: |
+        PostGIS の `st_dwithin` を使って現在地から指定半径以内のスポットを取得する RPC。
+
+        **Supabase SQL Function（マイグレーションで定義）:**
+        ```sql
+        CREATE OR REPLACE FUNCTION spots_within_radius(
+          lat FLOAT, lng FLOAT, radius_meters INT
+        )
+        RETURNS SETOF sustainable_spots AS $$
+          SELECT * FROM sustainable_spots
+          WHERE is_active = true
+            AND ST_DWithin(
+              location,
+              ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography,
+              radius_meters
+            )
+          ORDER BY location <-> ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography;
+        $$ LANGUAGE sql STABLE;
+        ```
+
+        **クライアントコード:**
+        ```typescript
+        const { data } = await supabase.rpc('spots_within_radius', {
+          lat: userLatitude,
+          lng: userLongitude,
+          radius_meters: 2000  // 2km
+        })
+        ```
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [email, password]
+              required: [lat, lng, radius_meters]
               properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-                  format: password
+                lat:
+                  type: number
+                  description: 現在地の緯度
+                  example: 35.6762
+                lng:
+                  type: number
+                  description: 現在地の経度
+                  example: 139.6503
+                radius_meters:
+                  type: integer
+                  description: 検索半径（メートル）
+                  example: 2000
       responses:
         '200':
-          description: ログイン成功
+          description: 距離範囲内のスポット一覧
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthToken'
+                type: array
+                items:
+                  $ref: '#/components/schemas/SustainableSpot'
+
+  # ─────────────────────────────────────────
+  # JOURNAL ENTRIES（認証必須）
+  # ─────────────────────────────────────────
+
+  /rest/v1/journal_entries:
+    get:
+      tags: [journal]
+      summary: 活動記録一覧取得
+      description: |
+        ログインユーザー自身の記録のみ取得（RLS により自動フィルタ）。
+
+        **クライアントコード:**
+        ```typescript
+        const { data } = await supabase
+          .from('journal_entries')
+          .select('id, spot_name, activity_type, visited_at, amount_jpy, note, created_at')
+          .order('visited_at', { ascending: false })
+        ```
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+        - $ref: '#/components/parameters/OrderParam'
+      responses:
+        '200':
+          description: 活動記録一覧（本人分のみ）
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JournalEntry'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+    post:
+      tags: [journal]
+      summary: 活動記録を作成
+      description: |
+        **クライアントコード:**
+        ```typescript
+        const { data, error } = await supabase
+          .from('journal_entries')
+          .insert({
+            spot_id: spotId ?? null,
+            spot_name: spotName,
+            activity_type: activityType,
+            visited_at: visitedAt,
+            amount_jpy: amountJpy ?? null,
+            note: note ?? null,
+          })
+          .select()
+          .single()
+        ```
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JournalEntryCreate'
+      responses:
+        '201':
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /rest/v1/journal_entries/{id}:
+    delete:
+      tags: [journal]
+      summary: 活動記録を削除
+      description: |
+        **クライアントコード:**
+        ```typescript
+        const { error } = await supabase
+          .from('journal_entries')
+          .delete()
+          .eq('id', entryId)
+        ```
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 削除成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /rest/v1/rpc/trip_summary:
+    post:
+      tags: [journal]
+      summary: 旅のサマリー集計取得
+      description: |
+        ユーザーの全活動記録を集計して旅のサマリーを返す RPC。
+
+        **Supabase SQL Function:**
+        ```sql
+        CREATE OR REPLACE FUNCTION trip_summary()
+        RETURNS JSON AS $$
+          SELECT json_build_object(
+            'total_visits',   COUNT(*),
+            'total_amount',   COALESCE(SUM(amount_jpy), 0),
+            'by_type',        json_object_agg(activity_type, cnt)
+          )
+          FROM (
+            SELECT activity_type, COUNT(*) AS cnt
+            FROM journal_entries
+            WHERE user_id = auth.uid()
+            GROUP BY activity_type
+          ) t;
+        $$ LANGUAGE sql STABLE SECURITY DEFINER;
+        ```
+
+        **クライアントコード:**
+        ```typescript
+        const { data } = await supabase.rpc('trip_summary')
+        ```
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 旅のサマリー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+# ─────────────────────────────────────────
+# COMPONENTS
+# ─────────────────────────────────────────
+
 components:
   schemas:
-    AuthToken:
+
+    AuthSession:
       type: object
       properties:
         access_token:
           type: string
         token_type:
           type: string
-          example: Bearer
+          example: bearer
         expires_in:
           type: integer
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+          example: train
+        name_en:
+          type: string
+          example: Train
+        icon:
+          type: string
+          example: 🚃
+        display_order:
+          type: integer
+
+    Manner:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [do, dont]
+        title_en:
+          type: string
+          example: Give up priority seats for elderly passengers
+        description_en:
+          type: string
+        context_en:
+          type: string
+          description: 文化的背景の説明（nullable）
+        display_order:
+          type: integer
+
+    ShrineStep:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        step_number:
+          type: integer
+          example: 1
+        title_en:
+          type: string
+          example: Approach the torii gate
+        description_en:
+          type: string
+        detail_en:
+          type: string
+          description: 補足・文化的背景（nullable）
+        image_url:
+          type: string
+          format: uri
+          description: Supabase Storage URL（nullable）
+
+    PhraseCategory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+          example: emergency
+        name_en:
+          type: string
+          example: Emergency
+        icon:
+          type: string
+          example: 🚨
+        display_order:
+          type: integer
+
+    Phrase:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        japanese:
+          type: string
+          example: 助けてください
+        romaji:
+          type: string
+          example: Tasukete kudasai
+        english:
+          type: string
+          example: Please help me
+        audio_url:
+          type: string
+          format: uri
+          description: Supabase Storage の音声ファイル URL（nullable）
+        display_order:
+          type: integer
+
+    SustainableSpot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name_en:
+          type: string
+          example: Meiji Jingu Shrine
+        name_ja:
+          type: string
+          example: 明治神宮
+        type:
+          type: string
+          enum: [shrine, donation, eco, temple]
+        description_en:
+          type: string
+        address_en:
+          type: string
+        latitude:
+          type: number
+          format: double
+          example: 35.6762
+        longitude:
+          type: number
+          format: double
+          example: 139.6990
+        website_url:
+          type: string
+          format: uri
+
+    JournalEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        spot_id:
+          type: string
+          format: uuid
+          nullable: true
+        spot_name:
+          type: string
+          example: Meiji Jingu Shrine
+        activity_type:
+          type: string
+          enum: [shrine, donation, eco, other]
+        visited_at:
+          type: string
+          format: date
+          example: '2026-05-12'
+        amount_jpy:
+          type: integer
+          nullable: true
+          example: 100
+        note:
+          type: string
+          nullable: true
+          maxLength: 500
+        created_at:
+          type: string
+          format: date-time
+
+    JournalEntryCreate:
+      type: object
+      required: [spot_name, activity_type, visited_at]
+      properties:
+        spot_id:
+          type: string
+          format: uuid
+          nullable: true
+        spot_name:
+          type: string
+        activity_type:
+          type: string
+          enum: [shrine, donation, eco, other]
+        visited_at:
+          type: string
+          format: date
+        amount_jpy:
+          type: integer
+          minimum: 0
+          nullable: true
+        note:
+          type: string
+          maxLength: 500
+          nullable: true
+
+    TripSummary:
+      type: object
+      properties:
+        total_visits:
+          type: integer
+          example: 5
+        total_amount:
+          type: integer
+          description: 合計寄付額（円）
+          example: 1500
+        by_type:
+          type: object
+          description: 活動種別ごとの件数
+          example:
+            shrine: 3
+            donation: 1
+            eco: 1
 
     Error:
       type: object
@@ -89,9 +735,31 @@ components:
         message:
           type: string
 
+  parameters:
+    SelectParam:
+      name: select
+      in: query
+      description: 取得するカラムを指定（PostgREST 形式）
+      schema:
+        type: string
+        example: id,name_en,type
+    OrderParam:
+      name: order
+      in: query
+      description: 並び順（PostgREST 形式）
+      schema:
+        type: string
+        example: display_order.asc
+
   responses:
+    BadRequest:
+      description: リクエスト不正
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
     Unauthorized:
-      description: 認証エラー
+      description: 認証エラー（JWT トークンなし or 期限切れ）
       content:
         application/json:
           schema:
@@ -108,6 +776,4 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-
-security:
-  - BearerAuth: []
+      description: Supabase Anonymous Auth で取得した JWT トークン
