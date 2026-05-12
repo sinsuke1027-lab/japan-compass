@@ -70,7 +70,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: チェック結果をPRにコメント
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const result = `${{ steps.spec_check.outputs.result }}`;
