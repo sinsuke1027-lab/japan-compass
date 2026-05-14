@@ -10,7 +10,9 @@ export function useAuth() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       if (!session) {
-        supabase.auth.signInAnonymously().catch(console.error)
+        supabase.auth.signInAnonymously().then(({ error }) => {
+          if (error) console.error('signInAnonymously failed:', error.message, error.status)
+        })
       } else {
         setLoading(false)
       }
