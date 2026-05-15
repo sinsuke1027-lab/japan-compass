@@ -11,7 +11,7 @@ export function MannersStack() {
   return (
     <Stack.Navigator>
       <Stack.Screen name="MannersList"        component={MannersListScreen}        options={{ title: 'Manner Guide' }} />
-      <Stack.Screen name="MannerDetail"       component={MannerDetailScreen}       options={{ title: '' }} />
+      <Stack.Screen name="MannerDetail"       component={MannerDetailScreen}       options={({ route }) => ({ title: route.params.categoryName })} />
       <Stack.Screen name="PhraseCategoryList" component={PhraseCategoryListScreen} options={{ title: 'Phrases' }} />
       <Stack.Screen name="PhraseDetail"       component={PhraseDetailScreen}       options={({ route }) => ({ title: route.params.categoryName })} />
     </Stack.Navigator>

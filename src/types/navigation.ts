@@ -15,7 +15,7 @@ export type TabParamList = {
 
 export type MannersStackParamList = {
   MannersList: undefined
-  MannerDetail: { id: string }
+  MannerDetail: { categoryId: string; categoryName: string }
   PhraseCategoryList: undefined
   PhraseDetail: { categoryId: string; categoryName: string }
 }
