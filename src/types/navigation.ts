@@ -26,9 +26,18 @@ export type JournalStackParamList = {
   JournalEdit: { id?: string }
 }
 
+export type EmergencyStackParamList = {
+  EmergencyGuide: undefined
+  EmergencyDetail: { typeId: string }
+  NearbyServices: undefined
+}
+
 export type HomeScreenProps = BottomTabScreenProps<TabParamList, 'Home'>
 export type MapScreenProps = BottomTabScreenProps<TabParamList, 'Map'>
 export type EmergencyScreenProps = BottomTabScreenProps<TabParamList, 'Emergency'>
+export type EmergencyGuideScreenProps = NativeStackScreenProps<EmergencyStackParamList, 'EmergencyGuide'>
+export type EmergencyDetailScreenProps = NativeStackScreenProps<EmergencyStackParamList, 'EmergencyDetail'>
+export type NearbyServicesScreenProps = NativeStackScreenProps<EmergencyStackParamList, 'NearbyServices'>
 export type MannersListScreenProps = NativeStackScreenProps<MannersStackParamList, 'MannersList'>
 export type MannerDetailScreenProps = NativeStackScreenProps<MannersStackParamList, 'MannerDetail'>
 export type PhraseCategoryListScreenProps = NativeStackScreenProps<MannersStackParamList, 'PhraseCategoryList'>

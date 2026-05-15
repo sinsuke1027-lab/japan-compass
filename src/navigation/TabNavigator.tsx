@@ -4,7 +4,7 @@ import { HomeScreen } from '../screens/home/HomeScreen'
 import { MannersStack } from './MannersStack'
 import { MapScreen } from '../screens/map/MapScreen'
 import { JournalStack } from './JournalStack'
-import { EmergencyScreen } from '../screens/emergency/EmergencyScreen'
+import { EmergencyStack } from './EmergencyStack'
 import type { TabParamList } from '../types/navigation'
 
 const Tab = createBottomTabNavigator<TabParamList>()
@@ -42,7 +42,7 @@ export function TabNavigator() {
       <Tab.Screen name="Manners"   component={MannersStack}    options={{ title: 'Manners' }} />
       <Tab.Screen name="Map"       component={MapScreen}       options={{ title: 'Map' }} />
       <Tab.Screen name="Journal"   component={JournalStack}    options={{ title: 'Journal' }} />
-      <Tab.Screen name="Emergency" component={EmergencyScreen} options={{ title: 'SOS' }} />
+      <Tab.Screen name="Emergency" component={EmergencyStack}  options={{ title: 'SOS' }} />
     </Tab.Navigator>
   )
 }
