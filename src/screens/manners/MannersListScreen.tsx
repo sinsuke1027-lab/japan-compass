@@ -1,65 +1,79 @@
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
+import {
+  View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator,
+} from 'react-native'
+import { useMannerCategories, type MannerCategory } from '../../hooks/useMannerCategories'
 import type { MannersListScreenProps } from '../../types/navigation'
 
-const MENU_ITEMS = [
-  { label: 'Manner Tips',   icon: '📋', description: 'Etiquette by scene',    available: false },
-  { label: 'Shrine Guide',  icon: '⛩',  description: 'How to visit a shrine', available: false },
-  { label: 'Phrases',       icon: '💬', description: 'Useful phrases',        available: true  },
-]
-
 export function MannersListScreen({ navigation }: MannersListScreenProps) {
-  const handlePress = (label: string, available: boolean) => {
-    if (!available) return
-    if (label === 'Phrases') navigation.navigate('PhraseCategoryList')
+  const { categories, loading, offline } = useMannerCategories()
+
+  if (loading && categories.length === 0) {
+    return <View style={styles.center}><ActivityIndicator size="large" color="#C8392B" /></View>
   }
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.list}>
-        {MENU_ITEMS.map((item) => (
-          <TouchableOpacity
-            key={item.label}
-            style={[styles.card, !item.available && styles.cardDisabled]}
-            onPress={() => handlePress(item.label, item.available)}
-            activeOpacity={item.available ? 0.7 : 1}
-          >
-            <Text style={styles.icon}>{item.icon}</Text>
-            <View style={styles.textBlock}>
-              <Text style={[styles.label, !item.available && styles.labelDisabled]}>{item.label}</Text>
-              <Text style={styles.description}>{item.description}</Text>
-            </View>
-            {item.available
-              ? <Text style={styles.chevron}>›</Text>
-              : <Text style={styles.comingSoon}>Soon</Text>
-            }
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {offline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>You're offline. Showing cached content.</Text>
+        </View>
+      )}
+      <FlatList
+        data={[...categories, { id: 'phrases', slug: 'phrases', name_en: 'Phrases', icon: '💬', sort_order: 99 }]}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
+        numColumns={2}
+        columnWrapperStyle={styles.row}
+        renderItem={({ item }) => (
+          <CategoryCard
+            item={item}
+            onPress={() => {
+              if (item.slug === 'phrases') {
+                navigation.navigate('PhraseCategoryList')
+              } else {
+                navigation.navigate('MannerDetail', {
+                  categoryId: item.id,
+                  categoryName: item.name_en,
+                })
+              }
+            }}
+          />
+        )}
+      />
     </View>
   )
 }
 
+function CategoryCard({ item, onPress }: { item: MannerCategory; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+      <Text style={styles.icon}>{item.icon ?? '📋'}</Text>
+      <Text style={styles.name}>{item.name_en}</Text>
+    </TouchableOpacity>
+  )
+}
+
 const styles = StyleSheet.create({
-  container:    { flex: 1, backgroundColor: '#F7F7F7' },
-  list:         { padding: 16, gap: 12 },
+  container:  { flex: 1, backgroundColor: '#F7F7F7' },
+  center:     { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  list:       { padding: 12, gap: 12 },
+  row:        { gap: 12 },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flex: 1,
+    aspectRatio: 1,
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
+    padding: 12,
   },
-  cardDisabled: { opacity: 0.5 },
-  icon:         { fontSize: 28, width: 44 },
-  textBlock:    { flex: 1 },
-  label:        { fontSize: 17, fontWeight: '600', color: '#1C1C1E' },
-  labelDisabled:{ color: '#8E8E93' },
-  description:  { fontSize: 13, color: '#8E8E93', marginTop: 2 },
-  chevron:      { fontSize: 22, color: '#C7C7CC' },
-  comingSoon:   { fontSize: 12, color: '#C7C7CC', fontWeight: '500' },
+  icon: { fontSize: 36, marginBottom: 8 },
+  name: { fontSize: 14, fontWeight: '600', color: '#1C1C1E', textAlign: 'center' },
+  offlineBanner: { backgroundColor: '#FFF3CD', paddingVertical: 8, paddingHorizontal: 16 },
+  offlineText:   { fontSize: 13, color: '#856404', textAlign: 'center' },
 })
