@@ -18,6 +18,7 @@ export type MannersStackParamList = {
   MannerDetail: { categoryId: string; categoryName: string }
   PhraseCategoryList: undefined
   PhraseDetail: { categoryId: string; categoryName: string }
+  ShrineGuide: undefined
 }
 
 export type JournalStackParamList = {

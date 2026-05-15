@@ -19,7 +19,11 @@ export function MannersListScreen({ navigation }: MannersListScreenProps) {
         </View>
       )}
       <FlatList
-        data={[...categories, { id: 'phrases', slug: 'phrases', name_en: 'Phrases', icon: '💬', sort_order: 99 }]}
+        data={[
+          ...categories,
+          { id: 'shrine', slug: 'shrine', name_en: 'Shrine Guide', icon: '⛩', sort_order: 98 },
+          { id: 'phrases', slug: 'phrases', name_en: 'Phrases', icon: '💬', sort_order: 99 },
+        ]}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         numColumns={2}
@@ -30,6 +34,8 @@ export function MannersListScreen({ navigation }: MannersListScreenProps) {
             onPress={() => {
               if (item.slug === 'phrases') {
                 navigation.navigate('PhraseCategoryList')
+              } else if (item.slug === 'shrine') {
+                navigation.navigate('ShrineGuide')
               } else {
                 navigation.navigate('MannerDetail', {
                   categoryId: item.id,
