@@ -25,6 +25,7 @@ export type JournalStackParamList = {
   JournalList: undefined
   JournalDetail: { id: string }
   JournalEdit: { id?: string }
+  TripSummary: undefined
 }
 
 export type EmergencyStackParamList = {
@@ -53,3 +54,4 @@ export type SpotDetailScreenProps = NativeStackScreenProps<MapStackParamList, 'S
 export type JournalListScreenProps = NativeStackScreenProps<JournalStackParamList, 'JournalList'>
 export type JournalDetailScreenProps = NativeStackScreenProps<JournalStackParamList, 'JournalDetail'>
 export type JournalEditScreenProps = NativeStackScreenProps<JournalStackParamList, 'JournalEdit'>
+export type TripSummaryScreenProps = NativeStackScreenProps<JournalStackParamList, 'TripSummary'>
