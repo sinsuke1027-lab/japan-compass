@@ -2,7 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import { HomeScreen } from '../screens/home/HomeScreen'
 import { MannersStack } from './MannersStack'
-import { MapScreen } from '../screens/map/MapScreen'
+import { MapStack } from './MapStack'
 import { JournalStack } from './JournalStack'
 import { EmergencyStack } from './EmergencyStack'
 import type { TabParamList } from '../types/navigation'
@@ -40,7 +40,7 @@ export function TabNavigator() {
     >
       <Tab.Screen name="Home"      component={HomeScreen}      options={{ title: 'Home' }} />
       <Tab.Screen name="Manners"   component={MannersStack}    options={{ title: 'Manners' }} />
-      <Tab.Screen name="Map"       component={MapScreen}       options={{ title: 'Map' }} />
+      <Tab.Screen name="Map"       component={MapStack}        options={{ title: 'Map' }} />
       <Tab.Screen name="Journal"   component={JournalStack}    options={{ title: 'Journal' }} />
       <Tab.Screen name="Emergency" component={EmergencyStack}  options={{ title: 'SOS' }} />
     </Tab.Navigator>

@@ -33,6 +33,11 @@ export type EmergencyStackParamList = {
   NearbyServices: undefined
 }
 
+export type MapStackParamList = {
+  MapMain: undefined
+  SpotDetail: { spotId: string; spotName: string }
+}
+
 export type HomeScreenProps = BottomTabScreenProps<TabParamList, 'Home'>
 export type MapScreenProps = BottomTabScreenProps<TabParamList, 'Map'>
 export type EmergencyScreenProps = BottomTabScreenProps<TabParamList, 'Emergency'>
@@ -43,6 +48,8 @@ export type MannersListScreenProps = NativeStackScreenProps<MannersStackParamLis
 export type MannerDetailScreenProps = NativeStackScreenProps<MannersStackParamList, 'MannerDetail'>
 export type PhraseCategoryListScreenProps = NativeStackScreenProps<MannersStackParamList, 'PhraseCategoryList'>
 export type PhraseDetailScreenProps = NativeStackScreenProps<MannersStackParamList, 'PhraseDetail'>
+export type MapMainScreenProps = NativeStackScreenProps<MapStackParamList, 'MapMain'>
+export type SpotDetailScreenProps = NativeStackScreenProps<MapStackParamList, 'SpotDetail'>
 export type JournalListScreenProps = NativeStackScreenProps<JournalStackParamList, 'JournalList'>
 export type JournalDetailScreenProps = NativeStackScreenProps<JournalStackParamList, 'JournalDetail'>
 export type JournalEditScreenProps = NativeStackScreenProps<JournalStackParamList, 'JournalEdit'>
