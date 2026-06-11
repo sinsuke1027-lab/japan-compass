@@ -1,8 +1,8 @@
 name: GCPデプロイ
 
 on:
-  push:
-    branches: [main]
+  # push:               # ← GCPシークレット設定後にコメントを解除
+  #   branches: [main]
   workflow_dispatch:
     inputs:
       environment:
