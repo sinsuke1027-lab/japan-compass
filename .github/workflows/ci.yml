@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # ▼ スタック設定後にこのstepを削除してください ▼
       - name: ⚠️ スタック未設定（このstepを削除してください）
