@@ -11,6 +11,13 @@ export type TabParamList = {
   Map: undefined
   Journal: undefined
   Emergency: undefined
+  Show: undefined
+}
+
+export type ShowStackParamList = {
+  ShowCardList: undefined
+  ShowCardDetail: { categoryId: string }
+  ShowCardFull: { cardId: string; categoryId: string; allergenIds?: string[] }
 }
 
 export type MannersStackParamList = {
@@ -39,6 +46,10 @@ export type MapStackParamList = {
   SpotDetail: { spotId: string; spotName: string }
 }
 
+export type ShowScreenProps = BottomTabScreenProps<TabParamList, 'Show'>
+export type ShowCardListScreenProps = NativeStackScreenProps<ShowStackParamList, 'ShowCardList'>
+export type ShowCardDetailScreenProps = NativeStackScreenProps<ShowStackParamList, 'ShowCardDetail'>
+export type ShowCardFullScreenProps = NativeStackScreenProps<ShowStackParamList, 'ShowCardFull'>
 export type HomeScreenProps = BottomTabScreenProps<TabParamList, 'Home'>
 export type MapScreenProps = BottomTabScreenProps<TabParamList, 'Map'>
 export type EmergencyScreenProps = BottomTabScreenProps<TabParamList, 'Emergency'>

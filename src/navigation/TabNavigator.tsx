@@ -5,6 +5,7 @@ import { MannersStack } from './MannersStack'
 import { MapStack } from './MapStack'
 import { JournalStack } from './JournalStack'
 import { EmergencyStack } from './EmergencyStack'
+import { ShowStack } from './ShowStack'
 import type { TabParamList } from '../types/navigation'
 
 const Tab = createBottomTabNavigator<TabParamList>()
@@ -17,6 +18,7 @@ const TAB_ICONS: Record<keyof TabParamList, { active: IoniconsName; inactive: Io
   Map:       { active: 'map',            inactive: 'map-outline' },
   Journal:   { active: 'journal',        inactive: 'journal-outline' },
   Emergency: { active: 'warning',        inactive: 'warning-outline' },
+  Show:      { active: 'hand-left',      inactive: 'hand-left-outline' },
 }
 
 export function TabNavigator() {
@@ -43,6 +45,7 @@ export function TabNavigator() {
       <Tab.Screen name="Map"       component={MapStack}        options={{ title: 'Map' }} />
       <Tab.Screen name="Journal"   component={JournalStack}    options={{ title: 'Journal' }} />
       <Tab.Screen name="Emergency" component={EmergencyStack}  options={{ title: 'SOS' }} />
+      <Tab.Screen name="Show"      component={ShowStack}       options={{ title: 'Show' }} />
     </Tab.Navigator>
   )
 }

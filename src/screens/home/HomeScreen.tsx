@@ -105,7 +105,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
             <TouchableOpacity
               key={s.label}
               style={styles.chip}
-              onPress={() => navigation.navigate('Manners')}
+              onPress={() => navigation.navigate(s.tab)}
               activeOpacity={0.7}
             >
               <Text style={styles.chipIcon}>{s.icon}</Text>
@@ -140,10 +140,10 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
 }
 
 const SHORTCUTS = [
-  { icon: '⛩', label: 'Shrine' },
-  { icon: '💬', label: 'Phrases' },
-  { icon: '♻️', label: 'Eco Tips' },
-  { icon: '🍱', label: 'Food' },
+  { icon: '🪧', label: 'Show Card', tab: 'Show' as const },
+  { icon: '⛩', label: 'Shrine',    tab: 'Manners' as const },
+  { icon: '💬', label: 'Phrases',   tab: 'Manners' as const },
+  { icon: '♻️', label: 'Eco Tips',  tab: 'Map' as const },
 ]
 
 function severityLabel(severity: string) {
