@@ -1,12 +1,16 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native'
 import { useState } from 'react'
 import { SHOW_CATEGORIES, ALLERGENS, buildAllergenCard, type Allergen } from '../../data/showCards'
+import { TRANSIT_CITIES, TRANSIT_PHRASE_TEMPLATES, type TransitCity, type TransitStation, type TransitLine } from '../../data/transitLines'
 import type { ShowCardDetailScreenProps } from '../../types/navigation'
 
 export function ShowCardDetailScreen({ route, navigation }: ShowCardDetailScreenProps) {
   const { categoryId } = route.params
   const category = SHOW_CATEGORIES.find(c => c.id === categoryId)!
   const [selectedAllergens, setSelectedAllergens] = useState<Allergen[]>([])
+  const [selectedCity, setSelectedCity] = useState<TransitCity | null>(null)
+  const [selectedStation, setSelectedStation] = useState<TransitStation | null>(null)
+  const [selectedLine, setSelectedLine] = useState<TransitLine | null>(null)
 
   const toggleAllergen = (allergen: Allergen) => {
     setSelectedAllergens(prev =>
@@ -18,9 +22,133 @@ export function ShowCardDetailScreen({ route, navigation }: ShowCardDetailScreen
 
   const allergenCard = selectedAllergens.length > 0 ? buildAllergenCard(selectedAllergens) : null
 
+  const navigateToFull = (japaneseText: string, englishText: string, title: string) => {
+    navigation.navigate('ShowCardFull', {
+      cardId: '__transit__',
+      categoryId,
+      transitPhrase: { japanese: japaneseText, english: englishText, title },
+    })
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Allergen selector (food only) */}
+
+      {/* ── Transit line selector (transport only) ── */}
+      {categoryId === 'transport' && (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>FIND YOUR LINE</Text>
+
+          {/* Step 1: City */}
+          <Text style={styles.stepLabel}>① City</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+            {TRANSIT_CITIES.map(city => {
+              const active = selectedCity?.id === city.id
+              return (
+                <TouchableOpacity
+                  key={city.id}
+                  style={[styles.chip, active && { backgroundColor: category.color }]}
+                  onPress={() => {
+                    setSelectedCity(city)
+                    setSelectedStation(null)
+                    setSelectedLine(null)
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                    {city.name_en}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </ScrollView>
+
+          {/* Step 2: Station */}
+          {selectedCity && (
+            <>
+              <Text style={styles.stepLabel}>② Station</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+                {selectedCity.stations.map(station => {
+                  const active = selectedStation?.id === station.id
+                  return (
+                    <TouchableOpacity
+                      key={station.id}
+                      style={[styles.chip, active && { backgroundColor: category.color }]}
+                      onPress={() => {
+                        setSelectedStation(station)
+                        setSelectedLine(null)
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                        {station.name_en}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </ScrollView>
+            </>
+          )}
+
+          {/* Step 3: Line */}
+          {selectedStation && (
+            <>
+              <Text style={styles.stepLabel}>③ Line</Text>
+              <View style={styles.lineList}>
+                {selectedStation.lines.map(line => {
+                  const active = selectedLine?.id === line.id
+                  return (
+                    <TouchableOpacity
+                      key={line.id}
+                      style={[styles.lineChip, active && { backgroundColor: category.color }]}
+                      onPress={() => setSelectedLine(line)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                        {line.name_en}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </>
+          )}
+
+          {/* Generated phrase cards */}
+          {selectedLine && (
+            <View style={styles.generatedCards}>
+              <Text style={styles.stepLabel}>TAP TO SHOW</Text>
+              {TRANSIT_PHRASE_TEMPLATES.map(tpl => (
+                <TouchableOpacity
+                  key={tpl.id}
+                  style={styles.card}
+                  onPress={() => navigateToFull(
+                    tpl.japanese(selectedLine.name_ja),
+                    tpl.english(selectedLine.name_en),
+                    tpl.title,
+                  )}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.cardAccent, { backgroundColor: category.color }]} />
+                  <View style={styles.cardBody}>
+                    <Text style={styles.cardTitle}>{tpl.title}</Text>
+                    <Text style={styles.cardJp} numberOfLines={2}>
+                      {tpl.japanese(selectedLine.name_ja)}
+                    </Text>
+                    <Text style={styles.cardEn} numberOfLines={1}>
+                      {tpl.english(selectedLine.name_en)}
+                    </Text>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          <View style={styles.divider} />
+        </View>
+      )}
+
+      {/* ── Allergen selector (food only) ── */}
       {categoryId === 'food' && (
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>SELECT YOUR ALLERGENS</Text>
@@ -55,9 +183,11 @@ export function ShowCardDetailScreen({ route, navigation }: ShowCardDetailScreen
         </View>
       )}
 
-      {/* Fixed cards */}
+      {/* ── Fixed cards ── */}
       <View style={styles.section}>
-        {categoryId === 'food' && <Text style={styles.sectionLabel}>OR CHOOSE A CARD</Text>}
+        {(categoryId === 'food' || categoryId === 'transport') && (
+          <Text style={styles.sectionLabel}>OR CHOOSE A CARD</Text>
+        )}
         {category.cards.map(card => (
           <CardRow
             key={card.id}
@@ -98,10 +228,17 @@ const styles = StyleSheet.create({
   content:        { padding: 16, gap: 20, paddingBottom: 40 },
   section:        { gap: 10 },
   sectionLabel:   { fontSize: 11, fontWeight: '700', color: '#8E8E93', letterSpacing: 0.8 },
+  stepLabel:      { fontSize: 11, fontWeight: '600', color: '#1A5276', letterSpacing: 0.5, marginTop: 4 },
+  divider:        { height: 1, backgroundColor: '#E0E0E0', marginVertical: 4 },
 
-  // Allergen chips
   chips:          { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
+    paddingVertical: 6, paddingHorizontal: 12,
+    borderRadius: 16, backgroundColor: '#fff',
+    borderWidth: 1, borderColor: '#E0E0E0',
+  },
+  lineList:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  lineChip: {
     paddingVertical: 6, paddingHorizontal: 12,
     borderRadius: 16, backgroundColor: '#fff',
     borderWidth: 1, borderColor: '#E0E0E0',
@@ -109,7 +246,8 @@ const styles = StyleSheet.create({
   chipText:       { fontSize: 13, color: '#555' },
   chipTextActive: { color: '#fff', fontWeight: '600' },
 
-  // Card row
+  generatedCards: { gap: 8, marginTop: 4 },
+
   card: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#fff', borderRadius: 14,

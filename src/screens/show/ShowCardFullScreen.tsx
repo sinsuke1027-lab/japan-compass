@@ -3,12 +3,16 @@ import { SHOW_CATEGORIES, ALLERGENS, buildAllergenCard } from '../../data/showCa
 import type { ShowCardFullScreenProps } from '../../types/navigation'
 
 export function ShowCardFullScreen({ route, navigation }: ShowCardFullScreenProps) {
-  const { cardId, categoryId, allergenIds } = route.params
+  const { cardId, categoryId, allergenIds, transitPhrase } = route.params
   const category = SHOW_CATEGORIES.find(c => c.id === categoryId)!
 
-  const card = cardId === 'allergen-custom' && allergenIds
-    ? buildAllergenCard(ALLERGENS.filter(a => allergenIds.includes(a.id)))
-    : category.cards.find(c => c.id === cardId)!
+  const card = (() => {
+    if (transitPhrase) return transitPhrase
+    if (cardId === 'allergen-custom' && allergenIds) {
+      return buildAllergenCard(ALLERGENS.filter(a => allergenIds.includes(a.id)))
+    }
+    return category.cards.find(c => c.id === cardId)!
+  })()
 
   return (
     <TouchableOpacity
