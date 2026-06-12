@@ -7,14 +7,16 @@
 
 ## 📍 現在の状態
 
-**最終更新:** 2026-06-11
+**最終更新:** 2026-06-13
 **現在のフェーズ:** 実装中
-**作業中ブランチ:** `main`（MVP 全機能マージ済み）
+**作業中ブランチ:** `main`
 
 ---
 
 ## ✅ 直近の完了タスク
 
+- 2026-06-13: #31 見せるカード（Show Card）実装・PR #32 マージ（4カテゴリ19枚・アレルゲン選択・フルスクリーン）
+- 2026-06-12: error-to-issue.yml スケジュールトリガー無効化（GCP 未設定エラー修正）
 - 2026-06-11: #29 Home 画面（SCR-010）実装完了・PR #30 で MVP 全機能を main へマージ
 - 2026-06-06: TEMPLATE_FEEDBACK.md・/sync-template スキル整備（テンプレートフィードバック仕組み化）
 - 2026-05-28: GCPデプロイworkflowの自動トリガー無効化（push → workflow_dispatch のみ）
@@ -29,6 +31,7 @@
 |---|---|---|---|
 | - | Transport / Shopping フレーズ登録 | 未実施 | DB にカテゴリはあるがフレーズ 0 件 |
 | #13 | ブックマーク機能（F-101） | 未着手 | Should 優先度 |
+| - | 支払い・交通カードガイド充実 | 検討中 | Show Card の延長として検討 |
 
 ---
 
@@ -58,6 +61,7 @@
 | SCR-041 | src/screens/journal/JournalEditScreen | ✅ |
 | SCR-042 | src/screens/journal/TripSummaryScreen | ✅ |
 | SCR-050/051/052 | src/screens/emergency/* | ✅ |
+| Show Card | src/screens/show/* | ✅ |
 
 ---
 
@@ -65,9 +69,8 @@
 
 | 内容 | 影響度 | 対応予定 |
 |---|---|---|
-| Transport / Shopping フレーズが 0 件 | 低 | 別 Issue |
+| Transport / Shopping フレーズが 0 件 | 低 | 別 Issue で対応 |
 | 音声翻訳機能（英⇔日）未実装 | 低 | 将来機能（Could）として仕様書記載済み |
-| Transport / Shopping フレーズが 0 件（既存） | 低 | 別 Issue で対応 |
 
 ---
 
@@ -75,6 +78,7 @@
 
 | 日時 | 作業内容 | 結果 |
 |---|---|---|
+| 2026-06-13 | #31 Show Card 実装・PR #32 マージ・error-to-issue 修正・MEMORY.md 更新 | 完了 |
 | 2026-06-11 | #29 Home 画面実装・PR #30 MVP 全機能マージ・旧 feature PR クローズ | 完了 |
 | 2026-05-28 | GCP deploy workflow 自動トリガー無効化・MEMORY.md 更新 | 完了 |
 | 2026-05-17 | #10 Journal 実装 | 完了 |
