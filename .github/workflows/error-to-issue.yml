@@ -1,9 +1,10 @@
 name: GCPエラーからIssue起票
 
 on:
-  schedule:
-    # 6時間ごとに実行（JST 3/9/15/21時）
-    - cron: '0 */6 * * *'
+  # GCP_SA_KEY / GCP_PROJECT_ID が未設定のため自動実行を無効化
+  # 再有効化: シークレットを設定後に schedule ブロックのコメントを解除する
+  # schedule:
+  #   - cron: '0 */6 * * *'
   workflow_dispatch:
 
 permissions:
