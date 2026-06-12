@@ -14,10 +14,12 @@ export type TabParamList = {
   Show: undefined
 }
 
+export type TransitPhrase = { japanese: string; english: string; title: string }
+
 export type ShowStackParamList = {
   ShowCardList: undefined
   ShowCardDetail: { categoryId: string }
-  ShowCardFull: { cardId: string; categoryId: string; allergenIds?: string[] }
+  ShowCardFull: { cardId: string; categoryId: string; allergenIds?: string[]; transitPhrase?: TransitPhrase }
 }
 
 export type MannersStackParamList = {
