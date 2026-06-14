@@ -30,6 +30,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         insights: e.insights ?? null,
         visited_at: e.visited_at,
         created_at: e.created_at,
+        activity_type: e.activity_type ?? null,
         spot_name_en: e.sustainable_spots?.name_en ?? null,
       })
     }

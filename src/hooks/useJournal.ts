@@ -11,6 +11,7 @@ export type JournalEntry = {
   visited_at: string
   created_at: string
   spot_name_en?: string | null
+  activity_type: string | null
 }
 
 export type TripSummary = {
@@ -31,7 +32,7 @@ export function useJournalEntries() {
     const [{ data: entriesData }, { data: summaryData }] = await Promise.all([
       supabase
         .from('journal_entries')
-        .select('id, user_id, spot_id, title, body, insights, visited_at, created_at, sustainable_spots(name_en)')
+        .select('id, user_id, spot_id, title, body, insights, visited_at, created_at, activity_type, sustainable_spots(name_en)')
         .order('visited_at', { ascending: false }),
       supabase.rpc('trip_summary'),
     ])
@@ -47,6 +48,7 @@ export function useJournalEntries() {
           insights: e.insights ?? null,
           visited_at: e.visited_at,
           created_at: e.created_at,
+          activity_type: e.activity_type ?? null,
           spot_name_en: e.sustainable_spots?.name_en ?? null,
         }))
       )
@@ -68,16 +70,31 @@ export async function upsertEntry(entry: {
   body: string | null
   insights: string | null
   visited_at: string
+  activity_type?: string | null
 }) {
   if (entry.id) {
     return supabase
       .from('journal_entries')
-      .update({ spot_id: entry.spot_id, title: entry.title, body: entry.body, insights: entry.insights, visited_at: entry.visited_at })
+      .update({
+        spot_id: entry.spot_id,
+        title: entry.title,
+        body: entry.body,
+        insights: entry.insights,
+        visited_at: entry.visited_at,
+        activity_type: entry.activity_type ?? 'other',
+      })
       .eq('id', entry.id)
   }
   return supabase
     .from('journal_entries')
-    .insert({ spot_id: entry.spot_id, title: entry.title, body: entry.body, insights: entry.insights, visited_at: entry.visited_at })
+    .insert({
+      spot_id: entry.spot_id,
+      title: entry.title,
+      body: entry.body,
+      insights: entry.insights,
+      visited_at: entry.visited_at,
+      activity_type: entry.activity_type ?? 'other',
+    })
 }
 
 export async function deleteEntry(id: string) {

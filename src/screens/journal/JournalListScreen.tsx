@@ -20,7 +20,7 @@ export function JournalListScreen({ navigation }: JournalListScreenProps) {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
-          <>
+          <View style={styles.headerCards}>
             <TouchableOpacity
               style={styles.summaryCard}
               onPress={() => navigation.navigate('TripSummary')}
@@ -52,7 +52,17 @@ export function JournalListScreen({ navigation }: JournalListScreenProps) {
               </View>
               <Text style={styles.memoriesArrow}>›</Text>
             </TouchableOpacity>
-          </>
+
+            <TouchableOpacity
+              style={styles.badgesCard}
+              onPress={() => navigation.navigate('StatsBadges')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.badgesIcon}>🏆</Text>
+              <Text style={styles.badgesLabel}>Stats & Badges</Text>
+              <Text style={styles.badgesArrow}>›</Text>
+            </TouchableOpacity>
+          </View>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -115,6 +125,9 @@ const styles = StyleSheet.create({
   center:         { flex: 1, justifyContent: 'center', alignItems: 'center' },
   list:           { padding: 16, gap: 10, paddingBottom: 80 },
 
+  // Header area
+  headerCards:    { gap: 10, marginBottom: 4 },
+
   // Summary card
   summaryCard: {
     flexDirection: 'row', alignItems: 'center',
@@ -131,13 +144,23 @@ const styles = StyleSheet.create({
   // Memories card
   memoriesCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 4, ...SHADOW,
+    backgroundColor: '#fff', borderRadius: 12, padding: 14, ...SHADOW,
   },
   memoriesIcon:   { fontSize: 28 },
   memoriesInfo:   { flex: 1 },
   memoriesTitle:  { fontSize: 15, fontWeight: '700', color: '#1C1C1E' },
   memoriesSub:    { fontSize: 12, color: '#8E8E93', marginTop: 2 },
   memoriesArrow:  { fontSize: 22, color: '#C7C7CC', fontWeight: '300' },
+
+  // Stats & Badges card
+  badgesCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 18, paddingVertical: 14,
+    ...SHADOW,
+  },
+  badgesIcon:     { fontSize: 22 },
+  badgesLabel:    { flex: 1, fontSize: 15, fontWeight: '700', color: '#1C1C1E' },
+  badgesArrow:    { fontSize: 22, color: '#C7C7CC', fontWeight: '300' },
 
   // Empty state
   empty:          { alignItems: 'center', paddingTop: 60 },
