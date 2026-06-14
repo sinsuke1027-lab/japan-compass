@@ -5,6 +5,7 @@ import { JournalEditScreen } from '../screens/journal/JournalEditScreen'
 import { TripSummaryScreen } from '../screens/journal/TripSummaryScreen'
 import { MemoryListScreen } from '../screens/journal/MemoryListScreen'
 import { MemoryAddScreen } from '../screens/journal/MemoryAddScreen'
+import { StatsBadgesScreen } from '../screens/journal/StatsBadgesScreen'
 import type { JournalStackParamList } from '../types/navigation'
 
 const Stack = createNativeStackNavigator<JournalStackParamList>()
@@ -18,6 +19,7 @@ export function JournalStack() {
       <Stack.Screen name="TripSummary"  component={TripSummaryScreen}  options={{ title: 'Trip Summary' }} />
       <Stack.Screen name="MemoryList"   component={MemoryListScreen}   options={{ title: 'Memories' }} />
       <Stack.Screen name="MemoryAdd"    component={MemoryAddScreen}    options={{ title: 'Add Memory' }} />
+      <Stack.Screen name="StatsBadges"  component={StatsBadgesScreen}  options={{ title: 'Stats & Badges' }} />
     </Stack.Navigator>
   )
 }

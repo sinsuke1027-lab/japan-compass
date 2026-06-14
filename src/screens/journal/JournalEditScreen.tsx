@@ -8,6 +8,14 @@ import { upsertEntry, deleteEntry } from '../../hooks/useJournal'
 import { useSpots, type Spot } from '../../hooks/useSpots'
 import type { JournalEditScreenProps } from '../../types/navigation'
 
+const ACTIVITY_CHIPS = [
+  { value: 'shrine',   icon: '⛩',  label: 'Shrine'   },
+  { value: 'food',     icon: '🍜', label: 'Food'     },
+  { value: 'eco',      icon: '♻️', label: 'Eco'      },
+  { value: 'shopping', icon: '🛍', label: 'Shopping' },
+  { value: 'other',    icon: '📌', label: 'Other'    },
+] as const
+
 type ExistingEntry = {
   id: string
   title: string
@@ -27,6 +35,7 @@ export function JournalEditScreen({ route, navigation }: JournalEditScreenProps)
   const [insights, setInsights] = useState('')
   const [spotId, setSpotId] = useState<string | null>(null)
   const [spotName, setSpotName] = useState<string | null>(null)
+  const [activityType, setActivityType] = useState<string>('other')
   const [visitedAt] = useState(new Date().toISOString().slice(0, 10))
   const [saving, setSaving] = useState(false)
   const [spotModalVisible, setSpotModalVisible] = useState(false)
@@ -50,6 +59,7 @@ export function JournalEditScreen({ route, navigation }: JournalEditScreenProps)
         setInsights(e.insights ?? '')
         setSpotId(e.spot_id ?? null)
         setSpotName(e.sustainable_spots?.name_en ?? null)
+        setActivityType(e.activity_type ?? 'other')
       })
   }, [entryId])
 
@@ -66,6 +76,7 @@ export function JournalEditScreen({ route, navigation }: JournalEditScreenProps)
       insights: insights.trim() || null,
       spot_id: spotId,
       visited_at: visitedAt,
+      activity_type: activityType,
     })
     setSaving(false)
     if (error) {
@@ -134,6 +145,26 @@ export function JournalEditScreen({ route, navigation }: JournalEditScreenProps)
             <Text style={styles.spotPlaceholder}>Search and select a spot…</Text>
           )}
         </TouchableOpacity>
+      </View>
+
+      {/* Activity Type */}
+      <View style={styles.field}>
+        <Text style={styles.label}>Activity Type</Text>
+        <View style={styles.chipRow}>
+          {ACTIVITY_CHIPS.map(chip => (
+            <TouchableOpacity
+              key={chip.value}
+              style={[styles.chip, activityType === chip.value && styles.chipActive]}
+              onPress={() => setActivityType(chip.value)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.chipIcon}>{chip.icon}</Text>
+              <Text style={[styles.chipLabel, activityType === chip.value && styles.chipLabelActive]}>
+                {chip.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* Memo */}
@@ -284,6 +315,17 @@ const styles = StyleSheet.create({
   spotSelectedText: { fontSize: 15, color: '#1C1C1E' },
   spotClear:        { fontSize: 16, color: '#8E8E93', paddingLeft: 8 },
   spotPlaceholder:  { fontSize: 15, color: '#C7C7CC' },
+
+  chipRow:          { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#fff', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8,
+    borderWidth: 1.5, borderColor: '#E5E5EA', ...SHADOW,
+  },
+  chipActive:       { borderColor: '#C8392B', backgroundColor: '#FDECEA' },
+  chipIcon:         { fontSize: 15 },
+  chipLabel:        { fontSize: 13, fontWeight: '600', color: '#8E8E93' },
+  chipLabelActive:  { color: '#C8392B' },
 
   saveBtn:          { backgroundColor: '#C8392B', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
   saveBtnText:      { color: '#fff', fontSize: 16, fontWeight: '700' },

@@ -1,9 +1,15 @@
+import { useEffect } from 'react'
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useJournalEntries } from '../../hooks/useJournal'
 import type { TripSummaryScreenProps } from '../../types/navigation'
 
 export function TripSummaryScreen(_props: TripSummaryScreenProps) {
   const { summary, entries, loading } = useJournalEntries()
+
+  useEffect(() => {
+    AsyncStorage.setItem('hasViewedSummary', 'true').catch(() => undefined)
+  }, [])
 
   if (loading) {
     return <View style={styles.center}><ActivityIndicator size="large" color="#C8392B" /></View>
