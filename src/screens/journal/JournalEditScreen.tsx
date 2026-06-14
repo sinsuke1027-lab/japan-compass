@@ -12,6 +12,7 @@ type ExistingEntry = {
   id: string
   title: string
   body: string | null
+  insights: string | null
   spot_id: string | null
   visited_at: string
   spot_name_en?: string | null
@@ -23,6 +24,7 @@ export function JournalEditScreen({ route, navigation }: JournalEditScreenProps)
 
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [insights, setInsights] = useState('')
   const [spotId, setSpotId] = useState<string | null>(null)
   const [spotName, setSpotName] = useState<string | null>(null)
   const [visitedAt] = useState(new Date().toISOString().slice(0, 10))
@@ -37,7 +39,7 @@ export function JournalEditScreen({ route, navigation }: JournalEditScreenProps)
     if (!entryId) return
     supabase
       .from('journal_entries')
-      .select('id, title, body, spot_id, visited_at, sustainable_spots(name_en)')
+      .select('id, title, body, insights, spot_id, visited_at, sustainable_spots(name_en)')
       .eq('id', entryId)
       .single()
       .then(({ data }) => {
@@ -45,6 +47,7 @@ export function JournalEditScreen({ route, navigation }: JournalEditScreenProps)
         const e = data as any
         setTitle(e.title ?? '')
         setBody(e.body ?? '')
+        setInsights(e.insights ?? '')
         setSpotId(e.spot_id ?? null)
         setSpotName(e.sustainable_spots?.name_en ?? null)
       })
@@ -60,6 +63,7 @@ export function JournalEditScreen({ route, navigation }: JournalEditScreenProps)
       id: entryId,
       title: title.trim(),
       body: body.trim() || null,
+      insights: insights.trim() || null,
       spot_id: spotId,
       visited_at: visitedAt,
     })
@@ -143,6 +147,21 @@ export function JournalEditScreen({ route, navigation }: JournalEditScreenProps)
           placeholderTextColor="#C7C7CC"
           multiline
           numberOfLines={5}
+          textAlignVertical="top"
+        />
+      </View>
+
+      {/* Insights */}
+      <View style={styles.field}>
+        <Text style={styles.label}>💡 What did you learn? <Text style={styles.optional}>(optional)</Text></Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          value={insights}
+          onChangeText={setInsights}
+          placeholder="Any cultural insights or discoveries..."
+          placeholderTextColor="#C7C7CC"
+          multiline
+          numberOfLines={4}
           textAlignVertical="top"
         />
       </View>

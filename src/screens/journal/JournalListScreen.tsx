@@ -20,24 +20,39 @@ export function JournalListScreen({ navigation }: JournalListScreenProps) {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
-          <TouchableOpacity
-            style={styles.summaryCard}
-            onPress={() => navigation.navigate('TripSummary')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.summaryLeft}>
-              <Text style={styles.summaryLabel}>Trip so far</Text>
-              <Text style={styles.summaryCount}>
-                {summary?.total_entries ?? 0} <Text style={styles.summaryUnit}>entries</Text>
-              </Text>
-              <Text style={styles.summarySub}>
-                {summary?.spots_visited ?? 0} spots visited
-              </Text>
-            </View>
-            <View style={styles.summaryRight}>
-              <Text style={styles.summaryArrow}>View Summary →</Text>
-            </View>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={styles.summaryCard}
+              onPress={() => navigation.navigate('TripSummary')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.summaryLeft}>
+                <Text style={styles.summaryLabel}>Trip so far</Text>
+                <Text style={styles.summaryCount}>
+                  {summary?.total_entries ?? 0} <Text style={styles.summaryUnit}>entries</Text>
+                </Text>
+                <Text style={styles.summarySub}>
+                  {summary?.spots_visited ?? 0} spots visited
+                </Text>
+              </View>
+              <View style={styles.summaryRight}>
+                <Text style={styles.summaryArrow}>View Summary →</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.memoriesCard}
+              onPress={() => navigation.navigate('MemoryList')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.memoriesIcon}>📷</Text>
+              <View style={styles.memoriesInfo}>
+                <Text style={styles.memoriesTitle}>Memories</Text>
+                <Text style={styles.memoriesSub}>Photos, food & experiences</Text>
+              </View>
+              <Text style={styles.memoriesArrow}>›</Text>
+            </TouchableOpacity>
+          </>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -112,6 +127,17 @@ const styles = StyleSheet.create({
   summarySub:     { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
   summaryRight:   { alignItems: 'flex-end' },
   summaryArrow:   { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+
+  // Memories card
+  memoriesCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 4, ...SHADOW,
+  },
+  memoriesIcon:   { fontSize: 28 },
+  memoriesInfo:   { flex: 1 },
+  memoriesTitle:  { fontSize: 15, fontWeight: '700', color: '#1C1C1E' },
+  memoriesSub:    { fontSize: 12, color: '#8E8E93', marginTop: 2 },
+  memoriesArrow:  { fontSize: 22, color: '#C7C7CC', fontWeight: '300' },
 
   // Empty state
   empty:          { alignItems: 'center', paddingTop: 60 },

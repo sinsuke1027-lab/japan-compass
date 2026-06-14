@@ -27,6 +27,7 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
         spot_id: e.spot_id,
         title: e.title,
         body: e.body,
+        insights: e.insights ?? null,
         visited_at: e.visited_at,
         created_at: e.created_at,
         spot_name_en: e.sustainable_spots?.name_en ?? null,
