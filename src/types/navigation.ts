@@ -12,6 +12,12 @@ export type TabParamList = {
   Journal: undefined
   Emergency: undefined
   Show: undefined
+  Plan: undefined
+}
+
+export type PlanStackParamList = {
+  PlanHome: undefined
+  WishlistAdd: { editId?: string }
 }
 
 export type TransitPhrase = { japanese: string; english: string; title: string }
@@ -51,6 +57,9 @@ export type MapStackParamList = {
   SpotDetail: { spotId: string; spotName: string }
 }
 
+export type PlanScreenProps = BottomTabScreenProps<TabParamList, 'Plan'>
+export type PlanHomeScreenProps = NativeStackScreenProps<PlanStackParamList, 'PlanHome'>
+export type WishlistAddScreenProps = NativeStackScreenProps<PlanStackParamList, 'WishlistAdd'>
 export type ShowScreenProps = BottomTabScreenProps<TabParamList, 'Show'>
 export type ShowCardListScreenProps = NativeStackScreenProps<ShowStackParamList, 'ShowCardList'>
 export type ShowCardDetailScreenProps = NativeStackScreenProps<ShowStackParamList, 'ShowCardDetail'>
