@@ -7,6 +7,7 @@ type Entry = {
   id: string
   title: string
   body: string | null
+  insights: string | null
   visited_at: string
   spot_name_en: string | null
 }
@@ -19,7 +20,7 @@ export function JournalDetailScreen({ route, navigation }: JournalDetailScreenPr
   useEffect(() => {
     supabase
       .from('journal_entries')
-      .select('id, title, body, visited_at, sustainable_spots(name_en)')
+      .select('id, title, body, insights, visited_at, sustainable_spots(name_en)')
       .eq('id', id)
       .single()
       .then(({ data }) => {
@@ -29,6 +30,7 @@ export function JournalDetailScreen({ route, navigation }: JournalDetailScreenPr
             id: e.id,
             title: e.title,
             body: e.body,
+            insights: e.insights ?? null,
             visited_at: e.visited_at,
             spot_name_en: e.sustainable_spots?.name_en ?? null,
           })
@@ -66,6 +68,13 @@ export function JournalDetailScreen({ route, navigation }: JournalDetailScreenPr
         <Text style={styles.noMemo}>No memo added.</Text>
       )}
 
+      {entry.insights ? (
+        <View style={styles.insightsCard}>
+          <Text style={styles.insightsLabel}>💡 Insights</Text>
+          <Text style={styles.insightsText}>{entry.insights}</Text>
+        </View>
+      ) : null}
+
       <TouchableOpacity
         style={styles.editBtn}
         onPress={() => navigation.navigate('JournalEdit', { id: entry.id })}
@@ -99,9 +108,13 @@ const styles = StyleSheet.create({
   spotBadge:   { backgroundColor: '#FDECEA', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, alignSelf: 'flex-start', marginBottom: 20 },
   spotText:    { fontSize: 14, color: '#C8392B', fontWeight: '600' },
 
-  bodyCard:    { backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 24, ...SHADOW },
-  bodyText:    { fontSize: 15, color: '#333', lineHeight: 24 },
-  noMemo:      { fontSize: 14, color: '#C7C7CC', marginBottom: 24 },
+  bodyCard:      { backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 16, ...SHADOW },
+  bodyText:      { fontSize: 15, color: '#333', lineHeight: 24 },
+  noMemo:        { fontSize: 14, color: '#C7C7CC', marginBottom: 16 },
+
+  insightsCard:  { backgroundColor: '#FFFBEA', borderRadius: 14, padding: 16, marginBottom: 24, ...SHADOW },
+  insightsLabel: { fontSize: 12, fontWeight: '700', color: '#B7810A', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  insightsText:  { fontSize: 15, color: '#333', lineHeight: 24 },
 
   editBtn:     { backgroundColor: '#C8392B', borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   editBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },

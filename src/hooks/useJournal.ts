@@ -7,6 +7,7 @@ export type JournalEntry = {
   spot_id: string | null
   title: string
   body: string | null
+  insights: string | null
   visited_at: string
   created_at: string
   spot_name_en?: string | null
@@ -30,7 +31,7 @@ export function useJournalEntries() {
     const [{ data: entriesData }, { data: summaryData }] = await Promise.all([
       supabase
         .from('journal_entries')
-        .select('id, user_id, spot_id, title, body, visited_at, created_at, sustainable_spots(name_en)')
+        .select('id, user_id, spot_id, title, body, insights, visited_at, created_at, sustainable_spots(name_en)')
         .order('visited_at', { ascending: false }),
       supabase.rpc('trip_summary'),
     ])
@@ -43,6 +44,7 @@ export function useJournalEntries() {
           spot_id: e.spot_id,
           title: e.title,
           body: e.body,
+          insights: e.insights ?? null,
           visited_at: e.visited_at,
           created_at: e.created_at,
           spot_name_en: e.sustainable_spots?.name_en ?? null,
@@ -64,17 +66,18 @@ export async function upsertEntry(entry: {
   spot_id: string | null
   title: string
   body: string | null
+  insights: string | null
   visited_at: string
 }) {
   if (entry.id) {
     return supabase
       .from('journal_entries')
-      .update({ spot_id: entry.spot_id, title: entry.title, body: entry.body, visited_at: entry.visited_at })
+      .update({ spot_id: entry.spot_id, title: entry.title, body: entry.body, insights: entry.insights, visited_at: entry.visited_at })
       .eq('id', entry.id)
   }
   return supabase
     .from('journal_entries')
-    .insert({ spot_id: entry.spot_id, title: entry.title, body: entry.body, visited_at: entry.visited_at })
+    .insert({ spot_id: entry.spot_id, title: entry.title, body: entry.body, insights: entry.insights, visited_at: entry.visited_at })
 }
 
 export async function deleteEntry(id: string) {
