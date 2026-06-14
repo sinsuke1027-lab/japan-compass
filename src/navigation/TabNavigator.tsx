@@ -6,6 +6,7 @@ import { MapStack } from './MapStack'
 import { JournalStack } from './JournalStack'
 import { EmergencyStack } from './EmergencyStack'
 import { ShowStack } from './ShowStack'
+import { PlanStack } from './PlanStack'
 import type { TabParamList } from '../types/navigation'
 
 const Tab = createBottomTabNavigator<TabParamList>()
@@ -19,6 +20,7 @@ const TAB_ICONS: Record<keyof TabParamList, { active: IoniconsName; inactive: Io
   Journal:   { active: 'journal',        inactive: 'journal-outline' },
   Emergency: { active: 'warning',        inactive: 'warning-outline' },
   Show:      { active: 'hand-left',      inactive: 'hand-left-outline' },
+  Plan:      { active: 'calendar',       inactive: 'calendar-outline' },
 }
 
 export function TabNavigator() {
@@ -46,6 +48,7 @@ export function TabNavigator() {
       <Tab.Screen name="Journal"   component={JournalStack}    options={{ title: 'Journal' }} />
       <Tab.Screen name="Emergency" component={EmergencyStack}  options={{ title: 'SOS' }} />
       <Tab.Screen name="Show"      component={ShowStack}       options={{ title: 'Show' }} />
+      <Tab.Screen name="Plan"      component={PlanStack}       options={{ title: 'Plan' }} />
     </Tab.Navigator>
   )
 }
